@@ -124,7 +124,7 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
 
                     if (!s.hourlyEnabled) {
                         Text(
-                            "정각 알림을 켜면 항목을 선택할 수 있어요.",
+                            "정각 알림을 켜면 항목을 선택할 수 있어요",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
