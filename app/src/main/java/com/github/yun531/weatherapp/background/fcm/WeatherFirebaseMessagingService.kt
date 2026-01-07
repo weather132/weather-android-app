@@ -1,5 +1,7 @@
 package com.github.yun531.weatherapp.background.fcm
 
+import android.util.Log
+import com.github.yun531.weatherapp.background.work.TopicSyncWorker
 import com.github.yun531.weatherapp.background.work.TriggerWork
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -21,10 +23,18 @@ class WeatherFirebaseMessagingService : FirebaseMessagingService() {
             hour = hour
         )
 
-        android.util.Log.d("FCM", "from=${message.from} data=${message.data}")
+        Log.d("FCM", "from=${message.from} data=${message.data}")
     }
 
     override fun onNewToken(token: String) {
-        android.util.Log.d("FCM", "newToken=$token")
+        Log.d("FCM", "newToken=$token")
+
+        // 토큰 변경 시점엔 토픽 매핑이 꼬일 수 있으니 “강제 동기화”
+        TopicSyncWorker.enqueue(
+            context = applicationContext,
+            reason = "NEW_TOKEN",
+            forceResubscribe = true,
+            tokenHint = token
+        )
     }
 }
