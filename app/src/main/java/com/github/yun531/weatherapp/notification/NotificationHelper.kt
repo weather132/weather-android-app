@@ -19,8 +19,11 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.time.Instant
 import kotlin.random.Random
+
 
 object NotificationHelper {
 
@@ -97,7 +100,7 @@ object NotificationHelper {
                     }
                 }
                 "RAIN_ONSET" -> {
-                    lines += "$regionName: ${formatRainOnset(e.payload)}"
+                    lines += "$regionName: ${formatRainOnset(e.payload, e.occurredAt)}"
                 }
                 "WARNING_ISSUED" -> {
                     lines += "$regionName: ${formatWarning(e.payload)}"
@@ -140,45 +143,81 @@ object NotificationHelper {
         val zone = ZoneId.systemDefault()
 
         val occurredAt = occurredAtRaw?.let { parseOccurredAt(it, zone) }
-        val baseHour = occurredAt?.truncatedTo(ChronoUnit.HOURS)
+        val baseDate = occurredAt?.toLocalDate() ?: LocalDate.now(zone)
 
         val hourlyArr = payload.getAsJsonArray("hourlyParts")
         val dayArr = payload.getAsJsonArray("dayParts")
 
         val out = mutableListOf<String>()
 
-        // 1) 시간대(가까운 예보) 라인들
+        // 1) 시간대(절대시각 구간)
         val hourlySegments: List<String> = when {
             hourlyArr == null || hourlyArr.size() == 0 -> emptyList()
-            baseHour != null -> formatHourRangesPretty(hourlyArr, baseHour)
-            else -> formatHourRangesFallback(hourlyArr) // occurredAt이 없을 때 폴백
+            else -> formatHourRangesFromIso(hourlyArr, baseDate, zone)
         }
 
-        if (hourlySegments.isEmpty()) {
-            out += "가까운 시간대 강수 없음"
-        } else {
-            hourlySegments.forEach { seg ->
-                out += "비 예보: $seg"
-            }
-        }
+        if (hourlySegments.isEmpty()) out += "가까운 시간대 강수 없음"
+        else hourlySegments.forEach { out += "비 예보: $it" }
 
         // 2) 7일(오전/오후) 요약 라인
-        val baseDate = (baseHour?.toLocalDate() ?: LocalDate.now(zone))
         val daySegments: List<String> = when {
             dayArr == null || dayArr.size() == 0 -> emptyList()
             else -> formatDayPartsPretty(dayArr, baseDate)
         }
         if (daySegments.isNotEmpty()) {
-            // 너무 길어지면 2개까지만 보여주고 나머지는 축약
             val dayText = if (daySegments.size <= 2) {
                 daySegments.joinToString(", ")
             } else {
                 daySegments.take(2).joinToString(", ") + " 외 ${daySegments.size - 2}일"
             }
-            out += "7일: $dayText"
+            out += "──────── 7일 ────────"
+            out += "[7일 요약] >> $dayText"
         }
 
         return out
+    }
+
+    private fun formatHourRangesFromIso(
+        arr: JsonArray,
+        baseDate: LocalDate,
+        zone: ZoneId
+    ): List<String> {
+        val out = mutableListOf<String>()
+
+        arr.forEach { el ->
+            if (!el.isJsonArray) return@forEach
+            val a = el.asJsonArray
+            if (a.size() < 2) return@forEach
+
+            val sRaw = a[0].asString
+            val eRaw = a[1].asString
+
+            val start = parseIsoToZoned(sRaw, zone) ?: return@forEach
+            val end = parseIsoToZoned(eRaw, zone) ?: return@forEach
+
+            out += formatZonedRange(start, end, baseDate)
+        }
+
+        return out
+    }
+
+    private fun parseIsoToZoned(raw: String, zone: ZoneId): ZonedDateTime? {
+        val s = raw.trim()
+
+        // OffsetDateTime/Instant 우선
+        try { return OffsetDateTime.parse(s).atZoneSameInstant(zone) } catch (_: Exception) {}
+        try { return Instant.parse(s).atZone(zone) } catch (_: Exception) {}
+
+        // LocalDateTime 형태(서버가 TZ 없이 주는 케이스)
+        return try {
+            LocalDateTime.parse(s).atZone(zone)
+        } catch (_: Exception) {
+            // "2026-01-15T17:00" 같은 케이스
+            runCatching {
+                val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+                LocalDateTime.parse(s, fmt).atZone(zone)
+            }.getOrNull()
+        }
     }
 
     private fun parseOccurredAt(raw: String, zone: ZoneId): ZonedDateTime {
@@ -293,12 +332,20 @@ object NotificationHelper {
         return out
     }
 
-    private fun formatRainOnset(payload: JsonObject): String {
+    private fun formatRainOnset(payload: JsonObject, occurredAtRaw: String?): String {
+        val zone = ZoneId.systemDefault()
         val pop = payload.get("pop")?.asInt
-        val hourOffset = payload.get("hourOffset")?.asInt
-        return if (pop != null && hourOffset != null) {
-            "비 예보: ${hourOffset}시간 후 (강수확률 ${pop}%)"
-        } else "비 예보"
+        val validAtRaw = payload.get("validAt")?.asString
+
+        if (pop == null || validAtRaw.isNullOrBlank()) return "비 예보"
+
+        val occurredAt = occurredAtRaw?.let { runCatching { parseOccurredAt(it, zone) }.getOrNull() }
+        val baseDate = occurredAt?.toLocalDate() ?: LocalDate.now(zone)
+
+        val t = parseIsoToZoned(validAtRaw, zone)
+        val label = if (t != null) formatZonedRange(t, t, baseDate) else validAtRaw
+
+        return "비 예보: $label (강수확률 ${pop}%)"
     }
 
     private fun formatWarning(payload: JsonObject): String {

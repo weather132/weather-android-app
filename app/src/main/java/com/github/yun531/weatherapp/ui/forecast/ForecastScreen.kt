@@ -137,7 +137,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text = formatHourLabel(hourly.reportTime, p.hourOffset),
+                                        text  = formatValidAtLabel(hourly.reportTime, p.validAt),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -209,16 +209,17 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
 }
 
 /**
- * reportTime(기준 시각) + hourOffset(시간 오프셋)을 이용해 "20시", "내일 01시"처럼 표시
- * reportTime 포맷이 파싱 불가하면 "+Nh"로 폴백
+ * reportTime(기준 시각)와 validAt(절대 시각)을 이용해
+ * "20시", "내일 01시"처럼 표시
  */
-private fun formatHourLabel(reportTime: String, hourOffset: Int): String {
-    val base = parseReportTimeToSeoul(reportTime) ?: return "+${hourOffset}h"
-    val t = base.plusHours(hourOffset.toLong())
+private fun formatValidAtLabel(reportTime: String, validAt: String): String {
+    val base = parseTimeToSeoul(reportTime)
+    val t = parseTimeToSeoul(validAt) ?: return validAt
+
+    val baseDate = (base?.toLocalDate() ?: t.toLocalDate())
+    val dayDiff = ChronoUnit.DAYS.between(baseDate, t.toLocalDate())
 
     val hourText = String.format(Locale.KOREA, "%02d시", t.hour)
-
-    val dayDiff = ChronoUnit.DAYS.between(base.toLocalDate(), t.toLocalDate())
     return when (dayDiff) {
         0L -> hourText
         1L -> "내일 $hourText"
@@ -233,21 +234,17 @@ private fun formatHourLabel(reportTime: String, hourOffset: Int): String {
  * - epoch sec/ms
  * - 커스텀 패턴들
  */
-private fun parseReportTimeToSeoul(reportTime: String): ZonedDateTime? {
+private fun parseTimeToSeoul(raw: String): ZonedDateTime? {
     val zone = ZoneId.of("Asia/Seoul")
-    val s = reportTime.trim()
+    val s = raw.trim()
 
-    // 1) ISO-8601 OffsetDateTime (예: 2025-12-31T20:00:00+09:00)
-    try {
-        return OffsetDateTime.parse(s).atZoneSameInstant(zone)
-    } catch (_: Exception) {}
+    // ISO-8601 OffsetDateTime
+    try { return OffsetDateTime.parse(s).atZoneSameInstant(zone) } catch (_: Exception) {}
 
-    // 2) ISO-8601 Instant (예: 2025-12-31T11:00:00Z)
-    try {
-        return Instant.parse(s).atZone(zone)
-    } catch (_: Exception) {}
+    // ISO-8601 Instant
+    try { return Instant.parse(s).atZone(zone) } catch (_: Exception) {}
 
-    // 3) 숫자만: epoch seconds(10) / millis(13)
+    // epoch sec/ms
     if (s.isNotEmpty() && s.all { it.isDigit() }) {
         val v = runCatching { s.toLong() }.getOrNull() ?: return null
         return when (s.length) {
@@ -257,16 +254,14 @@ private fun parseReportTimeToSeoul(reportTime: String): ZonedDateTime? {
         }
     }
 
-    // 4) 커스텀 패턴
+    // 커스텀 패턴 (초 유무 모두 대응)
     val patterns = listOf(
-        "yyyy-MM-dd HH:mm:ss",
-        "yyyy-MM-dd HH:mm",
-        "yyyy-MM-dd HH",
         "yyyy-MM-dd'T'HH:mm:ss",
         "yyyy-MM-dd'T'HH:mm",
+        "yyyy-MM-dd HH:mm:ss",
+        "yyyy-MM-dd HH:mm",
         "yyyyMMddHHmmss",
-        "yyyyMMddHHmm",
-        "yyyyMMddHH"
+        "yyyyMMddHHmm"
     )
 
     for (p in patterns) {
@@ -274,9 +269,11 @@ private fun parseReportTimeToSeoul(reportTime: String): ZonedDateTime? {
         try {
             val ldt = LocalDateTime.parse(s, fmt)
             return ldt.atZone(zone)
-        } catch (_: DateTimeParseException) {
-        }
+        } catch (_: DateTimeParseException) {}
     }
+
+    // 마지막으로 ISO_LOCAL_DATE_TIME도 시도
+    try { return LocalDateTime.parse(s).atZone(zone) } catch (_: Exception) {}
 
     return null
 }

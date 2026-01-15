@@ -7,7 +7,7 @@ data class HourlyForecastDto(
 )
 
 data class HourlyPointDto(
-    val hourOffset: Int,
+    val validAt: String,
     val temp: Int,
     val pop: Int
 )
