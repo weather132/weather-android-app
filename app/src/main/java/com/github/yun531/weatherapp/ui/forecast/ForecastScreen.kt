@@ -38,16 +38,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
-import java.time.temporal.ChronoUnit
-import java.util.Locale
-
 @Composable
 fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) {
     val settings by ServiceLocator.settingsRepo.settingsFlow.collectAsState(initial = null)
@@ -103,7 +93,16 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(regionName, style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = { vm.refresh(regionId) }) { Text("새로고침") }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { vm.refresh(regionId) }) { Text("새로고침") }
+
+                // 버튼 클릭 시: TriggerFetchWorker.HOURLY_TRIGGER 파이프라인(= alertApi) 실행
+                TextButton(
+                    onClick = { vm.runHourlyTriggerNowByButton() },
+                    enabled = !state.loading
+                ) { Text("예보 알림 생성") }
+            }
         }
 
         when {
@@ -137,7 +136,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text  = formatValidAtLabel(hourly.reportTime, p.validAt),
+                                        text = formatValidAtLabel(hourly.reportTime, p.validAt),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -206,74 +205,4 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
             }
         }
     }
-}
-
-/**
- * reportTime(기준 시각)와 validAt(절대 시각)을 이용해
- * "20시", "내일 01시"처럼 표시
- */
-private fun formatValidAtLabel(reportTime: String, validAt: String): String {
-    val base = parseTimeToSeoul(reportTime)
-    val t = parseTimeToSeoul(validAt) ?: return validAt
-
-    val baseDate = (base?.toLocalDate() ?: t.toLocalDate())
-    val dayDiff = ChronoUnit.DAYS.between(baseDate, t.toLocalDate())
-
-    val hourText = String.format(Locale.KOREA, "%02d시", t.hour)
-    return when (dayDiff) {
-        0L -> hourText
-        1L -> "내일 $hourText"
-        2L -> "모레 $hourText"
-        else -> "${t.monthValue}/${t.dayOfMonth} $hourText"
-    }
-}
-
-/**
- * reportTime 문자열을 Asia/Seoul 기준 ZonedDateTime으로 파싱
- * - ISO(OffsetDateTime/Instant)
- * - epoch sec/ms
- * - 커스텀 패턴들
- */
-private fun parseTimeToSeoul(raw: String): ZonedDateTime? {
-    val zone = ZoneId.of("Asia/Seoul")
-    val s = raw.trim()
-
-    // ISO-8601 OffsetDateTime
-    try { return OffsetDateTime.parse(s).atZoneSameInstant(zone) } catch (_: Exception) {}
-
-    // ISO-8601 Instant
-    try { return Instant.parse(s).atZone(zone) } catch (_: Exception) {}
-
-    // epoch sec/ms
-    if (s.isNotEmpty() && s.all { it.isDigit() }) {
-        val v = runCatching { s.toLong() }.getOrNull() ?: return null
-        return when (s.length) {
-            13 -> Instant.ofEpochMilli(v).atZone(zone)
-            10 -> Instant.ofEpochSecond(v).atZone(zone)
-            else -> null
-        }
-    }
-
-    // 커스텀 패턴 (초 유무 모두 대응)
-    val patterns = listOf(
-        "yyyy-MM-dd'T'HH:mm:ss",
-        "yyyy-MM-dd'T'HH:mm",
-        "yyyy-MM-dd HH:mm:ss",
-        "yyyy-MM-dd HH:mm",
-        "yyyyMMddHHmmss",
-        "yyyyMMddHHmm"
-    )
-
-    for (p in patterns) {
-        val fmt = DateTimeFormatter.ofPattern(p)
-        try {
-            val ldt = LocalDateTime.parse(s, fmt)
-            return ldt.atZone(zone)
-        } catch (_: DateTimeParseException) {}
-    }
-
-    // 마지막으로 ISO_LOCAL_DATE_TIME도 시도
-    try { return LocalDateTime.parse(s).atZone(zone) } catch (_: Exception) {}
-
-    return null
 }

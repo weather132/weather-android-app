@@ -1,13 +1,18 @@
 package com.github.yun531.weatherapp.ui.forecast
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
+import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.notification.NotificationHelper
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class ForecastUiState(
     val loading: Boolean = false,
@@ -54,5 +59,55 @@ class ForecastViewModel : ViewModel() {
     fun refresh(regionId: String) {
         _stateByRegion.value = _stateByRegion.value - regionId
         load(regionId)
+    }
+
+    /**
+     * 버튼 클릭 시: TriggerFetchWorker.HOURLY_TRIGGER 와 동일한 방식으로 알림 생성
+     * - settings 조회
+     * - selectedRegions 조회
+     * - enabledKinds 조합에 따라 alertApi 호출(getSummary / getClimate3Hour / getWarning)
+     * - NotificationHelper.showAlertEvents 로 표시
+     */
+    fun runHourlyTriggerNowByButton() {
+        viewModelScope.launch {
+            val ctx = ServiceLocator.appContext
+
+            try {
+                val s = ServiceLocator.settingsRepo.getOnce()
+                if (!s.hourlyEnabled) return@launch
+
+                val regions = ServiceLocator.settingsRepo.selectedRegions(s)
+                if (regions.isEmpty()) return@launch
+
+                val kinds = s.enabledKinds
+
+                val events = withContext(Dispatchers.IO) {
+                    when {
+                        kinds.contains(AlertKind.RAIN_ONSET) && kinds.contains(AlertKind.WARNING_ISSUED) ->
+                            ServiceLocator.alertApi.getSummary(regions)
+
+                        kinds.contains(AlertKind.RAIN_ONSET) ->
+                            ServiceLocator.alertApi.getClimate3Hour(regions, maxHour = null)
+
+                        kinds.contains(AlertKind.WARNING_ISSUED) ->
+                            ServiceLocator.alertApi.getWarning(regions)
+
+                        else -> emptyList()
+                    }
+                }
+
+                Log.d("ALERT", "manual=button hourly events=${events.size}")
+
+                if (events.isEmpty()) {
+                    NotificationHelper.showSimple(ctx, "테스트", "events=0 (정상: 알림 조건 미충족)")
+                    return@launch
+                }
+
+                NotificationHelper.showAlertEvents(ctx, "정각 알림", events)
+
+            } catch (e: Exception) {
+                Log.d("ALERT", "manual=button hourly failed msg=${e.message}")
+            }
+        }
     }
 }
