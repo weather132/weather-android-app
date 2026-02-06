@@ -79,7 +79,7 @@ class TriggerFetchWorker(
                         return@withContext Result.success()
                     }
 
-                    NotificationHelper.showAlertEvents(applicationContext, "정각 알림", events)
+                    NotificationHelper.showAlertEvents(applicationContext, "정각 알림 (전체)", events)
                 }
             }
 

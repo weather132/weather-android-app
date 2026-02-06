@@ -99,7 +99,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
 
                 // 버튼 클릭 시: TriggerFetchWorker.HOURLY_TRIGGER 파이프라인(= alertApi) 실행
                 TextButton(
-                    onClick = { vm.runHourlyTriggerNowByButton() },
+                    onClick = { vm.runHourlyTriggerNowByButton(regionId, regionName) },
                     enabled = !state.loading
                 ) { Text("예보 알림 생성") }
             }

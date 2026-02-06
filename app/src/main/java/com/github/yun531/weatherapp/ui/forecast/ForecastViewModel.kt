@@ -68,7 +68,9 @@ class ForecastViewModel : ViewModel() {
      * - enabledKinds 조합에 따라 alertApi 호출(getSummary / getClimate3Hour / getWarning)
      * - NotificationHelper.showAlertEvents 로 표시
      */
-    fun runHourlyTriggerNowByButton() {
+    fun runHourlyTriggerNowByButton(regionId: String, regionName: String) {
+        if (regionId.isBlank()) return
+
         viewModelScope.launch {
             val ctx = ServiceLocator.appContext
 
@@ -76,9 +78,7 @@ class ForecastViewModel : ViewModel() {
                 val s = ServiceLocator.settingsRepo.getOnce()
                 if (!s.hourlyEnabled) return@launch
 
-                val regions = ServiceLocator.settingsRepo.selectedRegions(s)
-                if (regions.isEmpty()) return@launch
-
+                val regions = listOf(regionId)
                 val kinds = s.enabledKinds
 
                 val events = withContext(Dispatchers.IO) {
@@ -96,14 +96,13 @@ class ForecastViewModel : ViewModel() {
                     }
                 }
 
-                Log.d("ALERT", "manual=button hourly events=${events.size}")
-
                 if (events.isEmpty()) {
                     NotificationHelper.showSimple(ctx, "테스트", "events=0 (정상: 알림 조건 미충족)")
                     return@launch
                 }
 
-                NotificationHelper.showAlertEvents(ctx, "정각 알림", events)
+                val title = "정각 알림 · $regionName"
+                NotificationHelper.showAlertEvents(ctx, title, events)
 
             } catch (e: Exception) {
                 Log.d("ALERT", "manual=button hourly failed msg=${e.message}")
