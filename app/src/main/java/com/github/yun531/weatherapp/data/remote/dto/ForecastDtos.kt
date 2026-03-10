@@ -3,10 +3,10 @@ package com.github.yun531.weatherapp.data.remote.dto
 data class HourlyForecastDto(
     val regionId: String,
     val reportTime: String,
-    val hours: List<HourlyPointDto>
+    val hourlyPoints: List<ForecastHourlyPoint>
 )
 
-data class HourlyPointDto(
+data class ForecastHourlyPoint(
     val validAt: String,
     val temp: Int,
     val pop: Int
@@ -15,10 +15,10 @@ data class HourlyPointDto(
 data class DailyForecastDto(
     val regionId: String,
     val reportTime: String,
-    val days: List<DailyPointDto>
+    val dailyPoints: List<ForecastDailyPoint>
 )
 
-data class DailyPointDto(
+data class ForecastDailyPoint(
     val dayOffset: Int,
     val maxTemp: Int,
     val minTemp: Int,

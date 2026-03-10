@@ -127,7 +127,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
                     ) {
-                        itemsIndexed(hourly.hours) { _, p ->
+                        itemsIndexed(hourly.hourlyPoints) { _, p ->
                             ElevatedCard(
                                 modifier = Modifier.widthIn(min = 96.dp)
                             ) {
@@ -170,7 +170,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
 
                     Spacer(Modifier.height(12.dp))
 
-                    daily.days.forEachIndexed { index, d ->
+                    daily.dailyPoints.forEachIndexed { index, d ->
                         ListItem(
                             headlineContent = {
                                 Text("D+${d.dayOffset}", style = MaterialTheme.typography.titleSmall)
@@ -197,7 +197,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                             }
                         )
 
-                        if (index != daily.days.lastIndex) {
+                        if (index != daily.dailyPoints.lastIndex) {
                             HorizontalDivider()
                         }
                     }
