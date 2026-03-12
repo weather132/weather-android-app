@@ -29,7 +29,7 @@ class TriggerFetchWorker(
                     if (!s.dailyEnabled) return@withContext Result.success()
 
                     // API 호출
-                    val events = ServiceLocator.alertApi.getClimateDay(regions)
+                    val events = ServiceLocator.alertApi.getRainForecast(regions)
 
                     // 디버그 로그(요청대로: API 호출 직후)
                     Log.d("ALERT", "type=$type events=${events.size}")
@@ -55,13 +55,13 @@ class TriggerFetchWorker(
                     // API 호출(조건별)
                     val events = when {
                         kinds.contains(AlertKind.RAIN_ONSET) && kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getSummary(regions)
+                            ServiceLocator.alertApi.getAlertSummary(regions)
 
                         kinds.contains(AlertKind.RAIN_ONSET) ->
-                            ServiceLocator.alertApi.getClimate3Hour(regions, maxHour = null)
+                            ServiceLocator.alertApi.getRainOnset(regions, maxHour = null)
 
                         kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getWarning(regions)
+                            ServiceLocator.alertApi.getIssuedWarnings(regions)
 
                         else -> emptyList()
                     }

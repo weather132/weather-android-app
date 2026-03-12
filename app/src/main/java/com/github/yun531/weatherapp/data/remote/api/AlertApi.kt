@@ -6,18 +6,18 @@ import retrofit2.http.Query
 
 interface AlertApi {
 
-    @GET("change/climate/day")
-    suspend fun getClimateDay(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
+    @GET("notification/alerts/rain-forecast")
+    suspend fun getRainForecast(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
 
-    @GET("change/climate/3hour")
-    suspend fun getClimate3Hour(
+    @GET("notification/alerts/rain-onset")
+    suspend fun getRainOnset(
         @Query("regionIds") regionIds: List<String>,
         @Query("maxHour") maxHour: Int? = null
     ): List<AlertEventDto>
 
-    @GET("change/warning")
-    suspend fun getWarning(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
+    @GET("notification/alerts/warning-issued")
+    suspend fun getIssuedWarnings(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
 
-    @GET("change/summary")
-    suspend fun getSummary(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
+    @GET("notification/alerts/summary")
+    suspend fun getAlertSummary(@Query("regionIds") regionIds: List<String>): List<AlertEventDto>
 }

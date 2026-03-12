@@ -40,8 +40,20 @@ class ForecastViewModel : ViewModel() {
         _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(loading = true))
         viewModelScope.launch {
             try {
-                val hourly = api.getHourly(regionId)
-                val daily = api.getDaily(regionId)
+                val hourlyResponse = api.getHourly(regionId)
+                val dailyResponse = api.getDaily(regionId)
+
+                val hourly = hourlyResponse.body()
+                val daily = dailyResponse.body()
+
+                if (hourly == null || daily == null) {
+                    _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(
+                        loading = false,
+                        error = "데이터 없음"
+                    ))
+                    return@launch
+                }
+
                 _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(
                     loading = false,
                     hourly = hourly,
@@ -65,7 +77,7 @@ class ForecastViewModel : ViewModel() {
      * 버튼 클릭 시: TriggerFetchWorker.HOURLY_TRIGGER 와 동일한 방식으로 알림 생성
      * - settings 조회
      * - selectedRegions 조회
-     * - enabledKinds 조합에 따라 alertApi 호출(getSummary / getClimate3Hour / getWarning)
+     * - enabledKinds 조합에 따라 alertApi 호출(getAlertSummary / getRainForecast / getIssuedWarnings)
      * - NotificationHelper.showAlertEvents 로 표시
      */
     fun runHourlyTriggerNowByButton(regionId: String, regionName: String) {
@@ -84,13 +96,13 @@ class ForecastViewModel : ViewModel() {
                 val events = withContext(Dispatchers.IO) {
                     when {
                         kinds.contains(AlertKind.RAIN_ONSET) && kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getSummary(regions)
+                            ServiceLocator.alertApi.getAlertSummary(regions)
 
                         kinds.contains(AlertKind.RAIN_ONSET) ->
-                            ServiceLocator.alertApi.getClimate3Hour(regions, maxHour = null)
+                            ServiceLocator.alertApi.getRainOnset(regions, maxHour = null)
 
                         kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getWarning(regions)
+                            ServiceLocator.alertApi.getIssuedWarnings(regions)
 
                         else -> emptyList()
                     }
