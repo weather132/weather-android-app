@@ -420,9 +420,43 @@ object NotificationHelper {
     }
 
     private fun formatWarning(payload: JsonObject): String {
-        val level = payload.get("level")?.asString ?: "?"
         val kind = payload.get("kind")?.asString ?: "?"
-        return "기상특보: $kind ($level)"
+        val level = payload.get("level")?.asString ?: "?"
+        val eventType = payload.get("eventType")?.asString
+        val prevLevel = payload.get("prevLevel")?.asString
+
+        val kindLabel = warningKindLabel(kind)
+        val levelLabel = warningLevelLabel(level)
+
+        return when (eventType) {
+            "NEW"        -> "$kindLabel $levelLabel 발령"
+            "UPGRADED"   -> "$kindLabel ${warningLevelLabel(prevLevel)} -> $levelLabel 격상"
+            "DOWNGRADED" -> "$kindLabel ${warningLevelLabel(prevLevel)} -> $levelLabel 하향"
+            "EXTENDED"   -> "$kindLabel $levelLabel 연장"
+            else         -> "기상특보: $kindLabel ($levelLabel)"
+        }
+    }
+
+    private fun warningKindLabel(kind: String?): String = when (kind) {
+        "HEAT"              -> "폭염"
+        "COLDWAVE"          -> "한파"
+        "HEAVY_SNOW"        -> "대설"
+        "RAIN"              -> "호우"
+        "DRY"               -> "건조"
+        "WIND"              -> "강풍"
+        "FOG"               -> "안개"
+        "HIGH_WAVE"         -> "풍랑"
+        "TYPHOON"           -> "태풍"
+        "TSUNAMI"           -> "해일"
+        "EARTHQUAKE_TSUNAMI"-> "지진해일"
+        else                -> kind ?: "기상특보"
+    }
+
+    private fun warningLevelLabel(level: String?): String = when (level) {
+        "WATCH"    -> "예비특보"
+        "ADVISORY" -> "주의보"
+        "WARNING"  -> "경보"
+        else       -> level ?: "?"
     }
 
     private fun JsonArray.getOrNull(i: Int) = if (i in 0 until size()) get(i) else null

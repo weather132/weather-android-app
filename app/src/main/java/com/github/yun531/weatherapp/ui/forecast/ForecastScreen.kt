@@ -116,7 +116,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                 Column(Modifier.padding(12.dp)) {
                     Text("24시간 예보", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "업데이트: ${hourly.reportTime}",
+                        "업데이트: ${hourly.announceTime}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -136,7 +136,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text = formatValidAtLabel(hourly.reportTime, p.validAt),
+                                        text = formatValidAtLabel(hourly.announceTime, p.effectiveTime),
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -163,7 +163,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                 Column(Modifier.padding(12.dp)) {
                     Text("7일 예보", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "업데이트: ${daily.reportTime}",
+                        "업데이트: ${daily.announceTime}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -173,7 +173,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     daily.dailyPoints.forEachIndexed { index, d ->
                         ListItem(
                             headlineContent = {
-                                Text("D+${d.dayOffset}", style = MaterialTheme.typography.titleSmall)
+                                Text("D+${d.dayAhead}", style = MaterialTheme.typography.titleSmall)
                             },
                             supportingContent = {
                                 Text(
