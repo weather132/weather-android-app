@@ -19,7 +19,7 @@ data class DailyForecastDto(
 )
 
 data class ForecastDailyPoint(
-    val dayAhead: Int,
+    val daysAhead: Int,
     val maxTemp: Int,
     val minTemp: Int,
     val amPop: Int,

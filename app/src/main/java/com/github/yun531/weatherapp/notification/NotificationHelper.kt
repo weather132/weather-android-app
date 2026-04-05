@@ -406,7 +406,7 @@ object NotificationHelper {
     private fun formatRainOnset(payload: JsonObject, occurredAtRaw: String?): String {
         val zone = ZoneId.systemDefault()
         val pop = payload.get("pop")?.asInt
-        val validAtRaw = payload.get("validAt")?.asString
+        val validAtRaw = payload.get("effectiveTime")?.asString
 
         if (pop == null || validAtRaw.isNullOrBlank()) return "비 예보"
 

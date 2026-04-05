@@ -173,7 +173,7 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     daily.dailyPoints.forEachIndexed { index, d ->
                         ListItem(
                             headlineContent = {
-                                Text("D+${d.dayAhead}", style = MaterialTheme.typography.titleSmall)
+                                Text("D+${d.daysAhead}", style = MaterialTheme.typography.titleSmall)
                             },
                             supportingContent = {
                                 Text(
