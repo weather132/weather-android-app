@@ -22,7 +22,7 @@
 
         <!-- FCM 수신 서비스 -->
         <service
-            android:name=".background.fcm.WeatherFirebaseMessagingService"
+            android:name=".infra.fcm.WeatherFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

@@ -7,7 +7,7 @@ import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
 import com.github.yun531.weatherapp.domain.AlertKind
-import com.github.yun531.weatherapp.notification.NotificationHelper
+import com.github.yun531.weatherapp.infra.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,31 +90,21 @@ class ForecastViewModel : ViewModel() {
                 val s = ServiceLocator.settingsRepo.getOnce()
                 if (!s.hourlyEnabled) return@launch
 
-                val regions = listOf(regionId)
-                val kinds = s.enabledKinds
-
                 val events = withContext(Dispatchers.IO) {
-                    when {
-                        kinds.contains(AlertKind.RAIN_ONSET) && kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getAlertSummary(regions)
-
-                        kinds.contains(AlertKind.RAIN_ONSET) ->
-                            ServiceLocator.alertApi.getRainOnset(regions, maxHour = null)
-
-                        kinds.contains(AlertKind.WARNING_ISSUED) ->
-                            ServiceLocator.alertApi.getIssuedWarnings(regions)
-
-                        else -> emptyList()
-                    }
+                    ServiceLocator.alertTriggerService
+                        .fetchByKinds(listOf(regionId), s.enabledKinds)
                 }
 
                 if (events.isEmpty()) {
-                    NotificationHelper.showSimple(ctx, "테스트", "events=0 (정상: 알림 조건 미충족)")
+                    NotificationHelper.showSimple(
+                        ctx,
+                        regionName,
+                        "활성화된 알림 종류에서 발생한 이벤트가 없습니다"
+                    )
                     return@launch
                 }
 
-                val title = "정각 알림 · $regionName"
-                NotificationHelper.showAlertEvents(ctx, title, events)
+                NotificationHelper.showAlertEvents(ctx, "정각 알림 · $regionName", events)
 
             } catch (e: Exception) {
                 Log.d("ALERT", "manual=button hourly failed msg=${e.message}")

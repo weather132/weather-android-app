@@ -1,4 +1,4 @@
-package com.github.yun531.weatherapp.background.fcm
+package com.github.yun531.weatherapp.infra.fcm
 
 import android.content.Context
 import android.util.Log

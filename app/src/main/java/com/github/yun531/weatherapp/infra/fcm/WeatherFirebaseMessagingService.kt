@@ -1,8 +1,8 @@
-package com.github.yun531.weatherapp.background.fcm
+package com.github.yun531.weatherapp.infra.fcm
 
 import android.util.Log
-import com.github.yun531.weatherapp.background.work.TopicSyncWorker
-import com.github.yun531.weatherapp.background.work.TriggerWork
+import com.github.yun531.weatherapp.infra.work.TopicSyncWorker
+import com.github.yun531.weatherapp.infra.work.TriggerWork
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage

@@ -1,4 +1,4 @@
-package com.github.yun531.weatherapp.ui.widgets
+package com.github.yun531.weatherapp.ui.common
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*

@@ -15,7 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.domain.AlertKind
-import com.github.yun531.weatherapp.ui.widgets.ComboBox
+import com.github.yun531.weatherapp.ui.common.ComboBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

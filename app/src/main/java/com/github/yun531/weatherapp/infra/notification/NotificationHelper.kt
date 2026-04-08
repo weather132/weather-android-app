@@ -1,4 +1,4 @@
-package com.github.yun531.weatherapp.notification
+package com.github.yun531.weatherapp.infra.notification
 
 import android.Manifest
 import android.app.NotificationChannel

@@ -1,4 +1,4 @@
-package com.github.yun531.weatherapp.background.work
+package com.github.yun531.weatherapp.infra.work
 
 import android.content.Context
 import androidx.work.*

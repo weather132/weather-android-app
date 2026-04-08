@@ -2,7 +2,7 @@ package com.github.yun531.weatherapp.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.github.yun531.weatherapp.background.work.TopicSyncWorker
+import com.github.yun531.weatherapp.infra.work.TopicSyncWorker
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.domain.AlertKind
 import kotlinx.coroutines.flow.SharingStarted

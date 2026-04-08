@@ -1,4 +1,4 @@
-package com.github.yun531.weatherapp.background.work
+package com.github.yun531.weatherapp.infra.work
 
 import android.content.Context
 import androidx.work.BackoffPolicy
@@ -10,7 +10,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.github.yun531.weatherapp.background.fcm.TopicSubscriptionManager
+import com.github.yun531.weatherapp.infra.fcm.TopicSubscriptionManager
 import java.util.concurrent.TimeUnit
 
 class TopicSyncWorker(
