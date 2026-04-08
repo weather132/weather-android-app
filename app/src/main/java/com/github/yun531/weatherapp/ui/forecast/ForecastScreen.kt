@@ -153,6 +153,13 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
 
                     Spacer(Modifier.height(12.dp))
 
+                    HourlyTempChart(
+                        points = hourly.hourlyPoints,
+                        announceTime = hourly.announceTime
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(horizontal = 4.dp)
