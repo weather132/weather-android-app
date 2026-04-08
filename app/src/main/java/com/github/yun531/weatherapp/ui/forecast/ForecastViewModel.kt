@@ -125,4 +125,32 @@ class ForecastViewModel : ViewModel() {
             }
         }
     }
+
+    fun runDailyTriggerNowByButton(regionId: String, regionName: String) {
+        if (regionId.isBlank()) return
+
+        viewModelScope.launch {
+            val ctx = ServiceLocator.appContext
+
+            try {
+                val events = withContext(Dispatchers.IO) {
+                    ServiceLocator.alertApi.getRainForecast(listOf(regionId))
+                }
+
+                if (events.isEmpty()) {
+                    NotificationHelper.showSimple(
+                        ctx,
+                        regionName,
+                        "현재 요약할 비 소식이 없습니다"
+                    )
+                    return@launch
+                }
+
+                NotificationHelper.showAlertEvents(ctx, "일기예보 요약 · $regionName", events)
+
+            } catch (e: Exception) {
+                Log.d("ALERT", "manual=button daily failed msg=${e.message}")
+            }
+        }
+    }
 }

@@ -18,6 +18,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,7 +31,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -53,7 +57,6 @@ fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) 
 
         val pagerState = rememberPagerState(pageCount = { regions.size })
 
-        // 현재 페이지에 들어왔을 때만 로드
         LaunchedEffect(pagerState.currentPage, regions) {
             val regionId = regions.getOrNull(pagerState.currentPage) ?: return@LaunchedEffect
             vm.loadIfNeeded(regionId)
@@ -97,11 +100,34 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { vm.refresh(regionId) }) { Text("새로고침") }
 
-                // 버튼 클릭 시: TriggerFetchWorker.HOURLY_TRIGGER 파이프라인(= alertApi) 실행
-                TextButton(
-                    onClick = { vm.runHourlyTriggerNowByButton(regionId, regionName) },
-                    enabled = !state.loading
-                ) { Text("예보 알림 생성") }
+                Box {
+                    var menuExpanded by remember { mutableStateOf(false) }
+
+                    TextButton(
+                        onClick = { menuExpanded = true },
+                        enabled = !state.loading
+                    ) { Text("알림 생성") }
+
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("예보 알림 생성") },
+                            onClick = {
+                                menuExpanded = false
+                                vm.runHourlyTriggerNowByButton(regionId, regionName)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("요약 알림 생성") },
+                            onClick = {
+                                menuExpanded = false
+                                vm.runDailyTriggerNowByButton(regionId, regionName)
+                            }
+                        )
+                    }
+                }
             }
         }
 
