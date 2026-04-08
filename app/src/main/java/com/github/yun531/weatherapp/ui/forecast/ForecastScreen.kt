@@ -105,6 +105,10 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
             }
         }
 
+        if (state.warnings.isNotEmpty()) {
+            WarningBanner(warnings = state.warnings)
+        }
+
         when {
             state.loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
             state.error != null -> Text("에러: ${state.error}")

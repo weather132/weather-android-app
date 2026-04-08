@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.yun531.weatherapp.core.ServiceLocator
+import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
 import com.github.yun531.weatherapp.domain.AlertKind
@@ -18,6 +19,7 @@ data class ForecastUiState(
     val loading: Boolean = false,
     val hourly: HourlyForecastDto? = null,
     val daily: DailyForecastDto? = null,
+    val warnings: List<AlertEventDto> = emptyList(),
     val error: String? = null
 )
 
@@ -43,12 +45,23 @@ class ForecastViewModel : ViewModel() {
                 val hourlyResponse = api.getHourly(regionId)
                 val dailyResponse = api.getDaily(regionId)
 
+                // 특보 조회 -- 실패해도 예보 표시에 영향 없도록 별도 처리
+                val warnings = try {
+                    withContext(Dispatchers.IO) {
+                        ServiceLocator.alertApi.getIssuedWarnings(listOf(regionId))
+                    }
+                } catch (e: Exception) {
+                    Log.d("WARNING", "warning fetch failed: ${e.message}")
+                    emptyList()
+                }
+
                 val hourly = hourlyResponse.body()
                 val daily = dailyResponse.body()
 
                 if (hourly == null || daily == null) {
                     _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(
                         loading = false,
+                        warnings = warnings,
                         error = "데이터 없음"
                     ))
                     return@launch
@@ -57,7 +70,8 @@ class ForecastViewModel : ViewModel() {
                 _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(
                     loading = false,
                     hourly = hourly,
-                    daily = daily
+                    daily = daily,
+                    warnings = warnings
                 ))
             } catch (e: Exception) {
                 _stateByRegion.value = _stateByRegion.value + (regionId to ForecastUiState(

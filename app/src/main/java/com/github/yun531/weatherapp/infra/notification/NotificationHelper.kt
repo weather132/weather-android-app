@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.github.yun531.weatherapp.R
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
+import com.github.yun531.weatherapp.domain.WarningLabels
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import java.time.Instant
@@ -425,38 +426,16 @@ object NotificationHelper {
         val eventType = payload.get("eventType")?.asString
         val prevLevel = payload.get("prevLevel")?.asString
 
-        val kindLabel = warningKindLabel(kind)
-        val levelLabel = warningLevelLabel(level)
+        val kindLabel = WarningLabels.kindLabel(kind)
+        val levelLabel = WarningLabels.levelLabel(level)
 
         return when (eventType) {
             "NEW"        -> "$kindLabel $levelLabel 발령"
-            "UPGRADED"   -> "$kindLabel ${warningLevelLabel(prevLevel)} -> $levelLabel 격상"
-            "DOWNGRADED" -> "$kindLabel ${warningLevelLabel(prevLevel)} -> $levelLabel 하향"
+            "UPGRADED"   -> "$kindLabel ${WarningLabels.levelLabel(prevLevel)} -> $levelLabel 격상"
+            "DOWNGRADED" -> "$kindLabel ${WarningLabels.levelLabel(prevLevel)} -> $levelLabel 하향"
             "EXTENDED"   -> "$kindLabel $levelLabel 연장"
             else         -> "기상특보: $kindLabel ($levelLabel)"
         }
-    }
-
-    private fun warningKindLabel(kind: String?): String = when (kind) {
-        "HEAT"              -> "폭염"
-        "COLDWAVE"          -> "한파"
-        "HEAVY_SNOW"        -> "대설"
-        "RAIN"              -> "호우"
-        "DRY"               -> "건조"
-        "WIND"              -> "강풍"
-        "FOG"               -> "안개"
-        "HIGH_WAVE"         -> "풍랑"
-        "TYPHOON"           -> "태풍"
-        "TSUNAMI"           -> "해일"
-        "EARTHQUAKE_TSUNAMI"-> "지진해일"
-        else                -> kind ?: "기상특보"
-    }
-
-    private fun warningLevelLabel(level: String?): String = when (level) {
-        "WATCH"    -> "예비특보"
-        "ADVISORY" -> "주의보"
-        "WARNING"  -> "경보"
-        else       -> level ?: "?"
     }
 
     private fun JsonArray.getOrNull(i: Int) = if (i in 0 until size()) get(i) else null
