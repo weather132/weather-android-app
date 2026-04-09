@@ -1,6 +1,7 @@
 package com.github.yun531.weatherapp.data.settings
 
 import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.WarningKind
 
 data class AppSettings(
     val region1: String = "",
@@ -9,6 +10,7 @@ data class AppSettings(
 
     val hourlyEnabled: Boolean = false,
     val enabledKinds: Set<AlertKind> = setOf(AlertKind.RAIN_ONSET, AlertKind.WARNING_ISSUED),
+    val warningKinds: Set<WarningKind> = WarningKind.defaultSet(),
 
     val dailyEnabled: Boolean = false,
     val dailyHour: Int = 7

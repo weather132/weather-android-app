@@ -18,7 +18,7 @@ class AlertTriggerService(
         val s = settingsRepo.getOnce()
         if (!s.hourlyEnabled) return Result(emptyList(), skipped = true)
 
-        val events = fetchByKinds(regions, s.enabledKinds)
+        val events = fetchByKinds(regions, s.enabledKinds, s.warningKinds)
         return Result(events, skipped = false)
     }
 
@@ -32,18 +32,21 @@ class AlertTriggerService(
 
     suspend fun fetchByKinds(
         regions: List<String>,
-        kinds: Set<AlertKind>
+        kinds: Set<AlertKind>,
+        warningKinds: Set<WarningKind> = WarningKind.defaultSet()
     ): List<AlertEventDto> {
+        val wkParams = warningKinds.map { it.name }
+
         return when {
             kinds.contains(AlertKind.RAIN_ONSET) &&
                     kinds.contains(AlertKind.WARNING_ISSUED) ->
-                alertApi.getAlertSummary(regions)
+                alertApi.getAlertSummary(regions, wkParams)
 
             kinds.contains(AlertKind.RAIN_ONSET) ->
                 alertApi.getRainOnset(regions, maxHour = null)
 
             kinds.contains(AlertKind.WARNING_ISSUED) ->
-                alertApi.getIssuedWarnings(regions)
+                alertApi.getIssuedWarnings(regions, wkParams)
 
             else -> emptyList()
         }

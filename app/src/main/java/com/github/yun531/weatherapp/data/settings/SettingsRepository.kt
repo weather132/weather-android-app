@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.WarningKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -19,6 +20,7 @@ class SettingsRepository(private val context: Context) {
 
         val HOURLY_ENABLED = booleanPreferencesKey("hourly_enabled")
         val ENABLED_KINDS_CSV = stringPreferencesKey("enabled_kinds_csv")
+        val WARNING_KINDS_CSV = stringPreferencesKey("warning_kinds_csv")
 
         val DAILY_ENABLED = booleanPreferencesKey("daily_enabled")
         val DAILY_HOUR = intPreferencesKey("daily_hour")
@@ -38,6 +40,9 @@ class SettingsRepository(private val context: Context) {
         val kindsCsv = p[Keys.ENABLED_KINDS_CSV] ?: AlertKind.toCsv(AlertKind.defaultSet())
         val kinds = AlertKind.parseCsv(kindsCsv)
 
+        val warningKindsCsv = p[Keys.WARNING_KINDS_CSV] ?: WarningKind.toCsv(WarningKind.defaultSet())
+        val warningKinds = WarningKind.parseCsv(warningKindsCsv)
+
         val dailyEnabled = p[Keys.DAILY_ENABLED] ?: false
         val dailyHour = (p[Keys.DAILY_HOUR] ?: 7).coerceIn(0, 23)
 
@@ -45,6 +50,7 @@ class SettingsRepository(private val context: Context) {
             region1 = r1, region2 = r2, region3 = r3,
             hourlyEnabled = hourlyEnabled,
             enabledKinds = kinds,
+            warningKinds = warningKinds,
             dailyEnabled = dailyEnabled,
             dailyHour = dailyHour
         )
@@ -73,6 +79,10 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun setEnabledKinds(kinds: Set<AlertKind>) {
         context.dataStore.edit { p -> p[Keys.ENABLED_KINDS_CSV] = AlertKind.toCsv(kinds) }
+    }
+
+    suspend fun setWarningKinds(kinds: Set<WarningKind>) {
+        context.dataStore.edit { p -> p[Keys.WARNING_KINDS_CSV] = WarningKind.toCsv(kinds) }
     }
 
     suspend fun setDailyEnabled(enabled: Boolean) {

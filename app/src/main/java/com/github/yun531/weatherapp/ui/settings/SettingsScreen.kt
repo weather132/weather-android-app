@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -15,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.WarningKind
 import com.github.yun531.weatherapp.ui.common.ComboBox
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -120,6 +122,68 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
                             label = { Text("기상특보") },
                             enabled = s.hourlyEnabled
                         )
+                    }
+
+                    AnimatedVisibility(
+                        visible = s.hourlyEnabled && s.enabledKinds.contains(AlertKind.WARNING_ISSUED)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "특보 종류",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                TextButton(
+                                    onClick = {
+                                        val allSelected = s.warningKinds.size == WarningKind.entries.size
+                                        if (allSelected) {
+                                            vm.setWarningKindsAll(emptySet())
+                                        } else {
+                                            vm.setWarningKindsAll(WarningKind.defaultSet())
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text(
+                                        if (s.warningKinds.size == WarningKind.entries.size) "전체 해제" else "전체 선택",
+                                        style = MaterialTheme.typography.labelMedium
+                                    )
+                                }
+                            }
+
+                            WarningKind.groupedByCategory().forEach { (category, kinds) ->
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        category,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.width(52.dp).padding(top = 6.dp)
+                                    )
+                                    kinds.forEach { kind ->
+                                        FilterChip(
+                                            selected = s.warningKinds.contains(kind),
+                                            onClick = { vm.toggleWarningKind(kind) },
+                                            label = { Text(kind.label, style = MaterialTheme.typography.labelMedium) },
+                                            modifier = Modifier.height(28.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                "선택한 종류의 기상특보만 알림으로 받습니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     if (!s.hourlyEnabled) {

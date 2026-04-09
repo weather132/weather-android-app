@@ -106,15 +106,11 @@ class ForecastViewModel : ViewModel() {
 
                 val events = withContext(Dispatchers.IO) {
                     ServiceLocator.alertTriggerService
-                        .fetchByKinds(listOf(regionId), s.enabledKinds)
+                        .fetchByKinds(listOf(regionId), s.enabledKinds, s.warningKinds)
                 }
 
                 if (events.isEmpty()) {
-                    NotificationHelper.showSimple(
-                        ctx,
-                        regionName,
-                        "활성화된 알림 종류에서 발생한 이벤트가 없습니다"
-                    )
+                    NotificationHelper.showSimple(ctx, "테스트", "events=0 (정상: 알림 조건 미충족)")
                     return@launch
                 }
 

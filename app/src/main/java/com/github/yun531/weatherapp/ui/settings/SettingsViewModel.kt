@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.github.yun531.weatherapp.infra.work.TopicSyncWorker
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.WarningKind
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,6 +46,22 @@ class SettingsViewModel : ViewModel() {
             }.toSet()
             repo.setEnabledKinds(next)
             // 알림 종류는 “API 호출/알림 생성 로직”에만 영향 → 토픽 sync 불필요
+        }
+    }
+
+    fun toggleWarningKind(kind: WarningKind) {
+        viewModelScope.launch {
+            val cur = repo.getOnce()
+            val next = cur.warningKinds.toMutableSet().apply {
+                if (contains(kind)) remove(kind) else add(kind)
+            }.toSet()
+            repo.setWarningKinds(next)
+        }
+    }
+
+    fun setWarningKindsAll(kinds: Set<WarningKind>) {
+        viewModelScope.launch {
+            repo.setWarningKinds(kinds)
         }
     }
 
