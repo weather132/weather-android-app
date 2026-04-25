@@ -7,6 +7,13 @@ enum class AlertKind {
     companion object {
         fun defaultSet(): Set<AlertKind> = setOf(RAIN_ONSET, WARNING_ISSUED)
 
+        fun noEventsLabel(kinds: Set<AlertKind>): String = when {
+            kinds.containsAll(setOf(RAIN_ONSET, WARNING_ISSUED)) -> "강수/특보"
+            kinds.contains(RAIN_ONSET)                           -> "강수"
+            kinds.contains(WARNING_ISSUED)                       -> "기상특보"
+            else                                                 -> "알림 조건"
+        }
+
         fun parseCsv(csv: String): Set<AlertKind> {
             if (csv.isBlank()) return emptySet()
             return csv.split(",")

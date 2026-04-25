@@ -42,6 +42,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+
 @Composable
 fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) {
     val settings by ServiceLocator.settingsRepo.settingsFlow.collectAsState(initial = null)
@@ -210,7 +214,22 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     daily.dailyPoints.forEachIndexed { index, d ->
                         ListItem(
                             headlineContent = {
-                                Text("D+${d.daysAhead}", style = MaterialTheme.typography.titleSmall)
+                                Row(
+                                    verticalAlignment = Alignment.Bottom,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        dayLabel(d.daysAhead, daily.announceTime),
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    if (d.daysAhead == 0) {
+                                        Text(
+                                            "(${koreanDayOfWeek(0, daily.announceTime)})",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                             },
                             supportingContent = {
                                 Text(
@@ -242,4 +261,40 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
             }
         }
     }
+}
+
+/**
+ * announceTime 기준으로 daysAhead에 해당하는 한글 요일을 반환.
+ * 서버 SnapshotAssembler와 동일하게 hour < 6이면 baseDate를 하루 뺀다.
+ */
+private fun koreanDayOfWeek(daysAhead: Int, announceTime: String): String {
+    val baseDate = try {
+        val at = LocalDateTime.parse(announceTime)
+        if (at.hour < 6) at.toLocalDate().minusDays(1) else at.toLocalDate()
+    } catch (_: Exception) {
+        val zdt = parseTimeToSeoul(announceTime)
+        if (zdt != null && zdt.hour < 6) zdt.toLocalDate().minusDays(1)
+        else zdt?.toLocalDate() ?: LocalDate.now()
+    }
+
+    val dayOfWeek = baseDate.plusDays(daysAhead.toLong()).dayOfWeek
+    return when (dayOfWeek) {
+        DayOfWeek.MONDAY    -> "월"
+        DayOfWeek.TUESDAY   -> "화"
+        DayOfWeek.WEDNESDAY -> "수"
+        DayOfWeek.THURSDAY  -> "목"
+        DayOfWeek.FRIDAY    -> "금"
+        DayOfWeek.SATURDAY  -> "토"
+        DayOfWeek.SUNDAY    -> "일"
+    }
+}
+
+/**
+ * daysAhead를 화면 표시용 라벨로 변환.
+ * - 0 -> "오늘 (요일)"
+ * - 1~6 -> 한글 요일 (월/화/수/목/금/토/일)
+ */
+private fun dayLabel(daysAhead: Int, announceTime: String): String {
+    if (daysAhead == 0) return "오늘"
+    return koreanDayOfWeek(daysAhead, announceTime)
 }

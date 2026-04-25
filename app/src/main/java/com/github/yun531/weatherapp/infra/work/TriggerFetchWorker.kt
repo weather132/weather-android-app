@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.github.yun531.weatherapp.core.ServiceLocator
+import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.domain.AlertKind
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
@@ -36,9 +37,20 @@ class TriggerFetchWorker(
             if (result.skipped) return@withContext Result.success()
 
             if (result.events.isEmpty()) {
-                NotificationHelper.showSimple(
-                    applicationContext, "테스트", "events=0 (정상: 알림 조건 미충족)"
-                )
+                val (title, body) = when (type) {
+                    TriggerType.HOURLY_TRIGGER -> {
+                        val catalog = RegionCatalog.get(applicationContext)
+                        val names = regions.joinToString(", ") { catalog.nameOf(it) }
+                        val kindLabel = AlertKind.noEventsLabel(s.enabledKinds)
+                        "정각 알림 · $names" to "$names: $kindLabel 없음"
+                    }
+                    TriggerType.DAILY_TRIGGER -> {
+                        val catalog = RegionCatalog.get(applicationContext)
+                        val names = regions.joinToString(", ") { catalog.nameOf(it) }
+                        "일기예보 요약 · $names" to "$names: 현재 요약할 비 소식이 없습니다"
+                    }
+                }
+                NotificationHelper.showSimple(applicationContext, title, body)
                 return@withContext Result.success()
             }
 

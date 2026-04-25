@@ -7,7 +7,7 @@ import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
-import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.AlertKind.Companion.noEventsLabel
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -110,7 +110,12 @@ class ForecastViewModel : ViewModel() {
                 }
 
                 if (events.isEmpty()) {
-                    NotificationHelper.showSimple(ctx, "테스트", "events=0 (정상: 알림 조건 미충족)")
+                    val kindLabel = noEventsLabel(s.enabledKinds)
+                    NotificationHelper.showSimple(
+                        ctx,
+                        "정각 알림 · $regionName",
+                        "$regionName: $kindLabel 없음"
+                    )
                     return@launch
                 }
 
