@@ -26,17 +26,12 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
     val s by vm.settings.collectAsState()
 
     val catalog = remember { RegionCatalog.get(context) }
-    val all = remember {
-        val base = catalog.allOptions().map { it.name to it.id }
-        listOf("선택안함" to "") + base
-    }
 
     val chosen = remember(s.region1, s.region2, s.region3) {
         setOf(s.region1, s.region2, s.region3).filter { it.isNotBlank() }.toSet()
     }
 
-    fun filteredOptions(current: String): List<Pair<String, String>> =
-        all.filter { (_, v) -> v.isBlank() || v == current || !chosen.contains(v) }
+    var openSlot by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier
@@ -60,23 +55,23 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ComboBox(
+                    RegionSlotRow(
                         label = "지역 1",
-                        options = filteredOptions(s.region1),
-                        value = s.region1,
-                        onChange = { vm.setRegion(1, it) }
+                        currentId = s.region1,
+                        catalog = catalog,
+                        onClick = { openSlot = 1 }
                     )
-                    ComboBox(
+                    RegionSlotRow(
                         label = "지역 2",
-                        options = filteredOptions(s.region2),
-                        value = s.region2,
-                        onChange = { vm.setRegion(2, it) }
+                        currentId = s.region2,
+                        catalog = catalog,
+                        onClick = { openSlot = 2 }
                     )
-                    ComboBox(
+                    RegionSlotRow(
                         label = "지역 3",
-                        options = filteredOptions(s.region3),
-                        value = s.region3,
-                        onChange = { vm.setRegion(3, it) }
+                        currentId = s.region3,
+                        catalog = catalog,
+                        onClick = { openSlot = 3 }
                     )
                 }
             }
@@ -245,5 +240,23 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
                 }
             }
         }
+    }
+
+    openSlot?.let { slot ->
+        val current = when (slot) {
+            1 -> s.region1
+            2 -> s.region2
+            else -> s.region3
+        }
+        RegionPickerSheet(
+            catalog = catalog,
+            excludedIds = chosen - current,
+            currentId = current,
+            onSelect = { id ->
+                vm.setRegion(slot, id)
+                openSlot = null
+            },
+            onDismiss = { openSlot = null }
+        )
     }
 }
