@@ -117,6 +117,12 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
                             label = { Text("기상특보") },
                             enabled = s.hourlyEnabled
                         )
+                        FilterChip(
+                            selected = s.enabledKinds.contains(AlertKind.AIR_POLLUTION),
+                            onClick = { vm.toggleKind(AlertKind.AIR_POLLUTION) },
+                            label = { Text("미세먼지") },
+                            enabled = s.hourlyEnabled
+                        )
                     }
 
                     AnimatedVisibility(

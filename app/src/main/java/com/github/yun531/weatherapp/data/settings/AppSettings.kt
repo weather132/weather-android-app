@@ -9,7 +9,7 @@ data class AppSettings(
     val region3: String = "",
 
     val hourlyEnabled: Boolean = false,
-    val enabledKinds: Set<AlertKind> = setOf(AlertKind.RAIN_ONSET, AlertKind.WARNING_ISSUED),
+    val enabledKinds: Set<AlertKind> = AlertKind.defaultSet(),
     val warningKinds: Set<WarningKind> = WarningKind.defaultSet(),
 
     val dailyEnabled: Boolean = false,
