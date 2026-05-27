@@ -23,8 +23,8 @@ interface AlertApi {
         @Query("warningKinds") warningKinds: List<String>? = null
     ): List<AlertEventDto>
 
-    @GET("notification/alerts/summary")
-    suspend fun getAlertSummary(
+    @GET("notification/alerts/combined")
+    suspend fun getAlertCombined(
         @Query("regionIds") regionIds: List<String>,
         @Query("warningKinds") warningKinds: List<String>? = null
     ): List<AlertEventDto>
