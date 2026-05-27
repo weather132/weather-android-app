@@ -1,5 +1,6 @@
 package com.github.yun531.weatherapp.ui.forecast
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -36,11 +38,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
+import com.github.yun531.weatherapp.data.remote.dto.AirQualityDto
+import com.github.yun531.weatherapp.domain.AirQualityGrade
+import com.github.yun531.weatherapp.domain.Pollutant
 
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -139,13 +147,13 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
             WarningBanner(warnings = state.warnings)
         }
 
-        when {
-            state.loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
-            state.error != null -> Text("에러: ${state.error}")
+        if (state.loading) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
         // -------- Hourly (가로 스크롤) --------
-        state.hourly?.let { hourly ->
+        val hourly = state.hourly
+        if (hourly != null) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
                     Text("24시간 예보", style = MaterialTheme.typography.titleMedium)
@@ -196,10 +204,13 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     }
                 }
             }
+        } else {
+            SectionPlaceholder("24시간 예보")
         }
 
         // -------- Daily (ListItem) --------
-        state.daily?.let { daily ->
+        val daily = state.daily
+        if (daily != null) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
                     Text("7일 예보", style = MaterialTheme.typography.titleMedium)
@@ -259,7 +270,12 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     }
                 }
             }
+        } else {
+            SectionPlaceholder("7일 예보")
         }
+
+        // 7일 예보 섹션이 끝난 후 미세먼지 섹션 호출
+        AirQualitySection(state.airQuality)
     }
 }
 
@@ -297,4 +313,94 @@ private fun koreanDayOfWeek(daysAhead: Int, announceTime: String): String {
 private fun dayLabel(daysAhead: Int, announceTime: String): String {
     if (daysAhead == 0) return "오늘"
     return koreanDayOfWeek(daysAhead, announceTime)
+}
+
+@Composable
+private fun SectionPlaceholder(title: String) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text("정보 없음", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun AirQualitySection(airQuality: AirQualityDto?) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            PollutantBlock(
+                label = "미세먼지",
+                pollutant = Pollutant.PM10,
+                value = airQuality?.pm10,
+                grade = AirQualityGrade.fromWire(airQuality?.pm10Grade)
+            )
+            PollutantBlock(
+                label = "초미세먼지",
+                pollutant = Pollutant.PM25,
+                value = airQuality?.pm25,
+                grade = AirQualityGrade.fromWire(airQuality?.pm25Grade)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PollutantBlock(
+    label: String,
+    pollutant: Pollutant,
+    value: Int?,
+    grade: AirQualityGrade?
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (value == null || grade == null) {
+            Text(
+                "정보 없음",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Text(
+                "${grade.label}(${value}㎍/㎥)",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            AirQualityBar(grade = grade, fraction = pollutant.fillFraction(value))
+        }
+    }
+}
+
+@Composable
+private fun AirQualityBar(grade: AirQualityGrade, fraction: Float) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(10.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(fraction)
+                .height(10.dp)
+                .clip(RoundedCornerShape(percent = 50))
+                .background(gradeColor(grade))
+        )
+    }
+}
+
+private fun gradeColor(grade: AirQualityGrade): Color = when (grade) {
+    AirQualityGrade.GOOD     -> Color(0xFF4FC3F7)
+    AirQualityGrade.MODERATE -> Color(0xFF66BB6A)
+    AirQualityGrade.BAD      -> Color(0xFFFFA726)
+    AirQualityGrade.VERY_BAD -> Color(0xFFEF5350)
 }

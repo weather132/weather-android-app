@@ -25,3 +25,11 @@ data class ForecastDailyPoint(
     val amPop: Int,
     val pmPop: Int
 )
+
+data class AirQualityDto(
+    val announceTime: String?,
+    val pm10: Int?,
+    val pm10Grade: String?,
+    val pm25: Int?,
+    val pm25Grade: String?
+)

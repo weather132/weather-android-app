@@ -1,5 +1,6 @@
 package com.github.yun531.weatherapp.data.remote.api
 
+import com.github.yun531.weatherapp.data.remote.dto.AirQualityDto
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
 import retrofit2.Response
@@ -12,4 +13,7 @@ interface ForecastApi {
 
     @GET("forecast/daily")
     suspend fun getDaily(@Query("regionId") regionId: String): Response<DailyForecastDto>
+
+    @GET("forecast/air-quality")
+    suspend fun getAirQuality(@Query("regionId") regionId: String): Response<AirQualityDto>
 }
