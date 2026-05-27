@@ -56,6 +56,7 @@ import com.github.yun531.weatherapp.domain.Pollutant
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneId
 
 @Composable
 fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) {
@@ -226,6 +227,9 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                     Spacer(Modifier.height(12.dp))
 
                     daily.dailyPoints.forEachIndexed { index, d ->
+                        val date = pointDate(d.daysAhead, daily.announceTime)
+                        val isToday = date == LocalDate.now(FORECAST_ZONE)
+
                         ListItem(
                             headlineContent = {
                                 Row(
@@ -236,9 +240,9 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
                                         dayLabel(d.daysAhead, daily.announceTime),
                                         style = MaterialTheme.typography.titleSmall
                                     )
-                                    if (d.daysAhead == 0) {
+                                    if (isToday) {
                                         Text(
-                                            "(${koreanDayOfWeek(0, daily.announceTime)})",
+                                            "(${weekdayKo(date)})",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -282,40 +286,54 @@ private fun ForecastPage(regionId: String, vm: ForecastViewModel) {
     }
 }
 
+private val FORECAST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+
 /**
- * announceTime 기준으로 daysAhead에 해당하는 한글 요일을 반환.
- * 서버 SnapshotAssembler와 동일하게 hour < 6이면 baseDate를 하루 뺀다.
+ * announceTime을 서버 SnapshotAssembler와 동일 규칙으로 기준일 환산.
+ * hour < 6이면 기준일을 하루 뺀다.
  */
-private fun koreanDayOfWeek(daysAhead: Int, announceTime: String): String {
-    val baseDate = try {
+private fun baseDateOf(announceTime: String): LocalDate {
+    return try {
         val at = LocalDateTime.parse(announceTime)
         if (at.hour < 6) at.toLocalDate().minusDays(1) else at.toLocalDate()
     } catch (_: Exception) {
         val zdt = parseTimeToSeoul(announceTime)
-        if (zdt != null && zdt.hour < 6) zdt.toLocalDate().minusDays(1)
-        else zdt?.toLocalDate() ?: LocalDate.now()
-    }
-
-    val dayOfWeek = baseDate.plusDays(daysAhead.toLong()).dayOfWeek
-    return when (dayOfWeek) {
-        DayOfWeek.MONDAY    -> "월"
-        DayOfWeek.TUESDAY   -> "화"
-        DayOfWeek.WEDNESDAY -> "수"
-        DayOfWeek.THURSDAY  -> "목"
-        DayOfWeek.FRIDAY    -> "금"
-        DayOfWeek.SATURDAY  -> "토"
-        DayOfWeek.SUNDAY    -> "일"
+        when {
+            zdt == null  -> LocalDate.now(FORECAST_ZONE)
+            zdt.hour < 6 -> zdt.toLocalDate().minusDays(1)
+            else         -> zdt.toLocalDate()
+        }
     }
 }
 
+/** daysAhead가 가리키는 실제 날짜 (기준일 + daysAhead). */
+private fun pointDate(daysAhead: Int, announceTime: String): LocalDate =
+    baseDateOf(announceTime).plusDays(daysAhead.toLong())
+
+private fun weekdayKo(date: LocalDate): String = when (date.dayOfWeek) {
+    DayOfWeek.MONDAY    -> "월"
+    DayOfWeek.TUESDAY   -> "화"
+    DayOfWeek.WEDNESDAY -> "수"
+    DayOfWeek.THURSDAY  -> "목"
+    DayOfWeek.FRIDAY    -> "금"
+    DayOfWeek.SATURDAY  -> "토"
+    DayOfWeek.SUNDAY    -> "일"
+}
+
 /**
- * daysAhead를 화면 표시용 라벨로 변환.
- * - 0 -> "오늘 (요일)"
- * - 1~6 -> 한글 요일 (월/화/수/목/금/토/일)
+ * announceTime 기준으로 daysAhead에 해당하는 한글 요일을 반환.
+ * 서버 SnapshotAssembler와 동일하게 hour < 6이면 baseDate를 하루 뺀다.
+ */
+private fun koreanDayOfWeek(daysAhead: Int, announceTime: String): String =
+    weekdayKo(pointDate(daysAhead, announceTime))
+
+/**
+ * 표시 라벨. 실제 오늘(now 기준)과 일치하는 날짜만 "오늘", 나머지는 한글 요일.
+ * announceTime이 과거(미갱신)여도 '오늘' 위치가 now 기준으로 정확히 잡힌다.
  */
 private fun dayLabel(daysAhead: Int, announceTime: String): String {
-    if (daysAhead == 0) return "오늘"
-    return koreanDayOfWeek(daysAhead, announceTime)
+    val date = pointDate(daysAhead, announceTime)
+    return if (date == LocalDate.now(FORECAST_ZONE)) "오늘" else weekdayKo(date)
 }
 
 @Composable
