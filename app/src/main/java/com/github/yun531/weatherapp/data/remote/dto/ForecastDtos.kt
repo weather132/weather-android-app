@@ -33,3 +33,8 @@ data class AirQualityDto(
     val pm25: Int?,
     val pm25Grade: String?
 )
+
+data class RegionAirQualityDto(
+    val regionId: String,
+    val view: AirQualityDto
+)
