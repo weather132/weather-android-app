@@ -35,20 +35,22 @@ class AlertTriggerService(
         kinds: Set<AlertKind>,
         warningKinds: Set<WarningKind> = WarningKind.defaultSet()
     ): List<AlertEventDto> {
-        val wkParams = warningKinds.map { it.name }
+        if (kinds.isEmpty()) return emptyList()
 
-        return when {
-            kinds.contains(AlertKind.RAIN_ONSET) &&
-                    kinds.contains(AlertKind.WARNING_ISSUED) ->
-                alertApi.getAlertSummary(regions, wkParams)
+        val warningKindParams = warningKinds.map { it.name }
+        if (kinds.size == 1) return fetchSingle(regions, kinds.first(), warningKindParams)
 
-            kinds.contains(AlertKind.RAIN_ONSET) ->
-                alertApi.getRainOnset(regions, maxHour = null)
+        return alertApi.getAlertSummary(regions, warningKindParams)
+            .filter { AlertKind.fromWire(it.type) in kinds }
+    }
 
-            kinds.contains(AlertKind.WARNING_ISSUED) ->
-                alertApi.getIssuedWarnings(regions, wkParams)
-
-            else -> emptyList()
-        }
+    private suspend fun fetchSingle(
+        regions: List<String>,
+        kind: AlertKind,
+        warningKindParams: List<String>
+    ): List<AlertEventDto> = when (kind) {
+        AlertKind.RAIN_ONSET     -> alertApi.getRainOnset(regions, maxHour = null)
+        AlertKind.WARNING_ISSUED -> alertApi.getIssuedWarnings(regions, warningKindParams)
+        AlertKind.AIR_POLLUTION  -> alertApi.getAirPollution(regions)
     }
 }

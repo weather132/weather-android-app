@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.github.yun531.weatherapp.R
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
+import com.github.yun531.weatherapp.domain.AirQualityGrade
 import com.github.yun531.weatherapp.domain.WarningLabels
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
@@ -118,6 +119,9 @@ object NotificationHelper {
                 }
                 "WARNING_ISSUED" -> {
                     lines += "$regionName: ${formatWarning(e.payload)}"
+                }
+                "AIR_POLLUTION" -> {
+                    lines += "$regionName: ${formatAirPollution(e.payload)}"
                 }
                 else -> {
                     lines += "$regionName: ${e.type}"
@@ -436,6 +440,20 @@ object NotificationHelper {
             "EXTENDED"   -> "$kindLabel $levelLabel 연장"
             else         -> "기상특보: $kindLabel ($levelLabel)"
         }
+    }
+
+    private fun formatAirPollution(payload: JsonObject): String {
+        val type = payload.get("pollutionType")?.takeUnless { it.isJsonNull }?.asString
+        val grade = AirQualityGrade.fromWire(
+            payload.get("grade")?.takeUnless { it.isJsonNull }?.asString
+        )?.label ?: ""
+        val value = payload.get("value")?.takeUnless { it.isJsonNull }?.asInt
+        val name = when (type) {
+            "PM10" -> "미세먼지"
+            "PM25" -> "초미세먼지"
+            else   -> "미세먼지"
+        }
+        return "$name $grade ${value ?: "-"}㎍/㎥"
     }
 
     private fun JsonArray.getOrNull(i: Int) = if (i in 0 until size()) get(i) else null

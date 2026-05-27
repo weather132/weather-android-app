@@ -40,7 +40,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -365,34 +368,44 @@ private fun PollutantBlock(
         if (value == null || grade == null) {
             Text(
                 "정보 없음",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            Text(
-                "${grade.label}(${value}㎍/㎥)",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = airQualityText(grade, value), fontWeight = FontWeight.Bold)
             AirQualityBar(grade = grade, fraction = pollutant.fillFraction(value))
         }
     }
 }
 
 @Composable
+private fun airQualityText(grade: AirQualityGrade, value: Int) = buildAnnotatedString {
+    val gradeStyle = MaterialTheme.typography.titleMedium
+    val unitStyle = MaterialTheme.typography.titleSmall
+
+    withStyle(SpanStyle(fontSize = gradeStyle.fontSize, fontWeight = FontWeight.Bold)) {
+        append(grade.label)
+    }
+    withStyle(SpanStyle(fontSize = unitStyle.fontSize, fontWeight = FontWeight.Bold)) {
+        append("(${value}㎍/㎥)")
+    }
+}
+
+@Composable
 private fun AirQualityBar(grade: AirQualityGrade, fraction: Float) {
+    val shape = RoundedCornerShape(4.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(10.dp)
-            .clip(RoundedCornerShape(percent = 50))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth(fraction)
                 .height(10.dp)
-                .clip(RoundedCornerShape(percent = 50))
+                .clip(shape)
                 .background(gradeColor(grade))
         )
     }

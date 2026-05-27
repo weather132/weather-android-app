@@ -28,4 +28,9 @@ interface AlertApi {
         @Query("regionIds") regionIds: List<String>,
         @Query("warningKinds") warningKinds: List<String>? = null
     ): List<AlertEventDto>
+
+    @GET("notification/alerts/air-pollution")
+    suspend fun getAirPollution(
+        @Query("regionIds") regionIds: List<String>
+    ): List<AlertEventDto>
 }
