@@ -31,6 +31,6 @@ object ServiceLocator {
         val retrofit = ApiClient.createRetrofit(AppConfig.BASE_URL)
         forecastApi = retrofit.create(ForecastApi::class.java)
         alertApi = retrofit.create(AlertApi::class.java)
-        alertTriggerService = AlertTriggerService(settingsRepo, alertApi)
+        alertTriggerService = AlertTriggerService(settingsRepo, alertApi, forecastApi)
     }
 }
