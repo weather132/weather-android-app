@@ -14,6 +14,10 @@ import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
 import com.github.yun531.weatherapp.domain.AirQualityGrade
 import com.github.yun531.weatherapp.domain.WarningLabels
+import com.github.yun531.weatherapp.domain.briefing.AirBriefing
+import com.github.yun531.weatherapp.domain.briefing.RainBriefing
+import com.github.yun531.weatherapp.domain.briefing.RegionBriefing
+import com.github.yun531.weatherapp.domain.briefing.WarningBriefing
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import java.time.Instant
@@ -108,7 +112,6 @@ object NotificationHelper {
 
             when (e.type) {
                 "RAIN_FORECAST" -> {
-                    // 여러 줄로 풀어서 누적 (줄바꿈 효과)
                     val subLines = formatRainForecastLines(e.payload, e.occurredAt)
                     subLines.forEach { l ->
                         lines += "$regionName: $l"
@@ -138,14 +141,123 @@ object NotificationHelper {
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
-            // 접힌 상태에서 대표 1줄
             .setContentText(lines.first())
-            // 펼치면 여러 줄 표시
             .setStyle(style)
             .setAutoCancel(true)
             .build()
 
         nm.notify(Random.nextInt(Int.MAX_VALUE), n)
+    }
+
+    /**
+     * 일일 요약/브리핑 표시 로직
+     */
+    fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>) {
+        if (briefings.isEmpty()) return
+        ensureChannel(context)
+
+        val nm = NotificationManagerCompat.from(context)
+        if (!nm.areNotificationsEnabled()) return
+
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+
+        val catalog = RegionCatalog.get(context)
+        val lines = buildBriefingLines(briefings, catalog)
+        if (lines.isEmpty()) return
+
+        val style = NotificationCompat.InboxStyle()
+        lines.take(7).forEach { style.addLine(it) }
+        if (lines.size > 7) style.setSummaryText("+${lines.size - 7} more")
+
+        val n = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(lines.first())
+            .setStyle(style)
+            .setAutoCancel(true)
+            .build()
+
+        nm.notify(Random.nextInt(Int.MAX_VALUE), n)
+    }
+
+    private fun buildBriefingLines(
+        briefings: List<RegionBriefing>,
+        catalog: RegionCatalog
+    ): List<String> {
+        val lines = mutableListOf<String>()
+        briefings.forEach { b ->
+            val regionName = catalog.nameOf(b.regionId)
+            briefingSegments(b).forEach { seg -> lines += "$regionName: $seg" }
+        }
+        return lines
+    }
+
+    /** 한 지역의 비/특보/미세먼지를 표시 줄(segment)들로 변환 */
+    private fun briefingSegments(b: RegionBriefing): List<String> {
+        val segments = mutableListOf<String>()
+        b.rain?.let { segments += rainSegments(it) }
+        b.warnings.forEach { segments += warningSegment(it) }
+        b.air?.let { air -> airSegments(air).forEach { segments += it } }
+        return segments.ifEmpty { listOf("특이사항 없음") }
+    }
+
+    private fun rainSegments(rain: RainBriefing): List<String> {
+        if (!rain.hasAnyRain()) return emptyList()
+
+        val out = mutableListOf<String>()
+        val fmt = DateTimeFormatter.ofPattern("M/d HH시")
+        rain.intervals.forEach { iv ->
+            out += "비 ${iv.start.format(fmt)}~${iv.end.format(fmt)}"
+        }
+        val rainyDays = rain.days.count { it.rainAm || it.rainPm }
+        if (rainyDays > 0) out += "7일 중 ${rainyDays}일 비"
+        return out
+    }
+
+    private fun warningSegment(w: WarningBriefing): String =
+        "특보 ${kindLabel(w.kind)} ${levelLabel(w.level)}"
+
+    private fun airSegments(air: AirBriefing): List<String> {
+        if (!air.hasAnyMeasurement()) return emptyList()
+
+        val out = mutableListOf<String>()
+        air.pm10Grade?.let { out += pmSegment("미세먼지", it, air.pm10, air.pm10NeedsValue()) }
+        air.pm25Grade?.let { out += pmSegment("초미세먼지", it, air.pm25, air.pm25NeedsValue()) }
+        return out
+    }
+
+    private fun pmSegment(label: String, grade: String, value: Int?, withValue: Boolean): String =
+        if (withValue && value != null) "$label ${gradeLabel(grade)} ${value}㎍/㎥"
+        else "$label ${gradeLabel(grade)}"
+
+    private fun gradeLabel(grade: String): String = when (grade) {
+        AirBriefing.Grade.GOOD -> "좋음"
+        AirBriefing.Grade.MODERATE -> "보통"
+        AirBriefing.Grade.BAD -> "나쁨"
+        AirBriefing.Grade.VERY_BAD -> "매우나쁨"
+        else -> grade
+    }
+
+    private fun levelLabel(level: String): String = when (level) {
+        "WARNING" -> "경보"
+        "ADVISORY" -> "주의보"
+        else -> level
+    }
+
+    private fun kindLabel(kind: String): String = when (kind) {
+        "RAIN" -> "호우"
+        "HEAT" -> "폭염"
+        "WIND" -> "강풍"
+        "COLD" -> "한파"
+        "SNOW" -> "대설"
+        "DRY" -> "건조"
+        else -> kind
     }
 
     /**
@@ -160,17 +272,14 @@ object NotificationHelper {
      */
     private fun formatRainForecastLines(payload: JsonObject, occurredAtRaw: String?): List<String> {
         val zone = ZoneId.systemDefault()
-
         val occurredAt = occurredAtRaw?.let { parseOccurredAt(it, zone) }
         val baseDate = occurredAt?.toLocalDate() ?: LocalDate.now(zone)
         val baseHour = (occurredAt ?: ZonedDateTime.now(zone)).truncatedTo(ChronoUnit.HOURS)
 
         val hourlyArr = payload.getAsJsonArray("hourlyParts")
         val dayArr = payload.getAsJsonArray("dayParts")
-
         val out = mutableListOf<String>()
 
-        // 시간대(절대시각 구간 / 구 스펙 offset 혼용 가능)
         val hourlySegments: List<String> = when {
             hourlyArr == null || hourlyArr.size() == 0 -> emptyList()
             else -> formatHourRangesSmart(hourlyArr, baseDate, zone, baseHour)
@@ -179,7 +288,6 @@ object NotificationHelper {
         if (hourlySegments.isEmpty()) out += "가까운 시간대 강수 없음"
         else hourlySegments.forEach { out += "비 예보: $it" }
 
-        // 7일(오전/오후) 요약 라인
         val daySegments: List<String> = when {
             dayArr == null || dayArr.size() == 0 -> emptyList()
             else -> formatDayPartsPretty(dayArr, baseDate)
@@ -193,17 +301,9 @@ object NotificationHelper {
             out += "──────── 7일 ────────"
             out += "[7일 요약] >> $dayText"
         }
-
         return out
     }
 
-    /**
-     * hourlyParts 파서
-     *
-     * - [{ "start": "2026-02-10T20:00:00", "end": "2026-02-10T22:00:00" }, ...]
-     * - [["2026-..","2026-.."], ...]  // ISO 문자열 2개
-     * - [[3,6],[16,18], ...]         // baseHour + offset(hours)
-     */
     private fun formatHourRangesSmart(
         arr: JsonArray,
         baseDate: LocalDate,
@@ -211,74 +311,52 @@ object NotificationHelper {
         baseHour: ZonedDateTime
     ): List<String> {
         val out = mutableListOf<String>()
-
         arr.forEach { el ->
             when {
-                // JsonObject(start/end)
                 el.isJsonObject -> {
                     val o = el.asJsonObject
                     val sRaw = o.get("start")?.asString ?: return@forEach
                     val eRaw = o.get("end")?.asString ?: sRaw
-
                     val start = parseIsoToZoned(sRaw, zone) ?: return@forEach
                     val end = parseIsoToZoned(eRaw, zone) ?: return@forEach
-
                     out += formatZonedRange(start, end, baseDate)
                 }
-
-                // JsonArray([a,b])
                 el.isJsonArray -> {
                     val a = el.asJsonArray
                     if (a.size() < 2) return@forEach
-
                     val p0 = a[0]
                     val p1 = a[1]
+                    val bothNumber = p0.isJsonPrimitive && p1.isJsonPrimitive &&
+                            p0.asJsonPrimitive.isNumber && p1.asJsonPrimitive.isNumber
 
-                    val bothNumber =
-                        p0.isJsonPrimitive && p1.isJsonPrimitive &&
-                                p0.asJsonPrimitive.isNumber && p1.asJsonPrimitive.isNumber
-
-                    // offset(hours)
                     if (bothNumber) {
                         val s = p0.asInt
                         val e = p1.asInt
-
                         val start = baseHour.plusHours(s.toLong())
                         val end = baseHour.plusHours(e.toLong())
-
                         out += formatZonedRange(start, end, baseDate)
                         return@forEach
                     }
 
-                    //  ISO 문자열 2개
                     val sRaw = runCatching { p0.asString }.getOrNull() ?: return@forEach
                     val eRaw = runCatching { p1.asString }.getOrNull() ?: return@forEach
-
                     val start = parseIsoToZoned(sRaw, zone) ?: return@forEach
                     val end = parseIsoToZoned(eRaw, zone) ?: return@forEach
-
                     out += formatZonedRange(start, end, baseDate)
                 }
-
                 else -> Unit
             }
         }
-
         return out
     }
 
     private fun parseIsoToZoned(raw: String, zone: ZoneId): ZonedDateTime? {
         val s = raw.trim()
-
-        // OffsetDateTime/Instant 우선
         try { return OffsetDateTime.parse(s).atZoneSameInstant(zone) } catch (_: Exception) {}
         try { return Instant.parse(s).atZone(zone) } catch (_: Exception) {}
-
-        // LocalDateTime 형태(서버가 TZ 없이 주는 케이스)
         return try {
             LocalDateTime.parse(s).atZone(zone)
         } catch (_: Exception) {
-            // "2026-01-15T17:00" 같은 케이스
             runCatching {
                 val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
                 LocalDateTime.parse(s, fmt).atZone(zone)
@@ -299,18 +377,12 @@ object NotificationHelper {
     }
 
     private fun formatZonedRange(start: ZonedDateTime, end: ZonedDateTime, baseDate: LocalDate): String {
-        // 역전 방어
         val (s, e) = if (start.toInstant() <= end.toInstant()) start to end else end to start
-
         val startLabel = dayLabel(s.toLocalDate(), baseDate)
         val endLabel = dayLabel(e.toLocalDate(), baseDate)
-
         val sh = s.hour
         val eh = e.hour
 
-        // 원하는 형식 고정:
-        // - 같은 날: "오늘 9시~12시"
-        // - 날짜 바뀜: "오늘 23시~내일 2시"
         return if (s.toInstant() == e.toInstant()) {
             "$startLabel ${sh}시"
         } else {
@@ -332,35 +404,22 @@ object NotificationHelper {
         }
     }
 
-    /**
-     * dayParts: 7일치 [오전,오후] 플래그
-     * - [[0,1], ...]  // 0/1
-     * - [{rainAm:false, rainPm:true}, ...]  // boolean
-     *
-     * idx = baseDate로부터 n일 후
-     * 예: idx=2, rainPm=true(또는 [0,1]) => "모레 오후"
-     */
     private fun formatDayPartsPretty(arr: JsonArray, baseDate: LocalDate): List<String> {
         val out = mutableListOf<String>()
-
         arr.forEachIndexed { idx, el ->
             val (am, pm) = when {
-                //  JsonObject
                 el.isJsonObject -> {
                     val o = el.asJsonObject
                     val amB = o.get("rainAm")?.asBoolean ?: false
                     val pmB = o.get("rainPm")?.asBoolean ?: false
                     amB to pmB
                 }
-
-                // JsonArray([0/1, 0/1])
                 el.isJsonArray -> {
                     val a = el.asJsonArray
                     val amI = a.getOrNull(0)?.asInt ?: 0
                     val pmI = a.getOrNull(1)?.asInt ?: 0
                     (amI == 1) to (pmI == 1)
                 }
-
                 else -> false to false
             }
 
@@ -368,39 +427,28 @@ object NotificationHelper {
 
             val date = baseDate.plusDays(idx.toLong())
             val dLabel = dayLabel(date, baseDate)
-
             val ap = when {
                 am && pm -> "오전/오후"
                 am -> "오전"
                 pm -> "오후"
                 else -> ""
             }
-
             out += "$dLabel $ap".trim()
         }
-
         return out
     }
 
-    /**
-     * occurredAt이 없을 때는 offset을 그대로 보여주는 폴백
-     * ([[3,6], ...] 같은 형태에서만 사용 가능)
-     */
     private fun formatHourRangesFallback(arr: JsonArray): List<String> {
         val out = mutableListOf<String>()
         arr.forEach { el ->
             if (!el.isJsonArray) return@forEach
             val a = el.asJsonArray
             if (a.size() < 2) return@forEach
-
             val p0 = a[0]
             val p1 = a[1]
-
-            val bothNumber =
-                p0.isJsonPrimitive && p1.isJsonPrimitive &&
-                        p0.asJsonPrimitive.isNumber && p1.asJsonPrimitive.isNumber
+            val bothNumber = p0.isJsonPrimitive && p1.isJsonPrimitive &&
+                    p0.asJsonPrimitive.isNumber && p1.asJsonPrimitive.isNumber
             if (!bothNumber) return@forEach
-
             val s = p0.asInt
             val e = p1.asInt
             out += if (s == e) "${s}시간 후" else "${s}~${e}시간 후"
@@ -417,7 +465,6 @@ object NotificationHelper {
 
         val occurredAt = occurredAtRaw?.let { runCatching { parseOccurredAt(it, zone) }.getOrNull() }
         val baseDate = occurredAt?.toLocalDate() ?: LocalDate.now(zone)
-
         val t = parseIsoToZoned(validAtRaw, zone)
         val label = if (t != null) formatZonedRange(t, t, baseDate) else validAtRaw
 

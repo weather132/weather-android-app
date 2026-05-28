@@ -1,12 +1,12 @@
 package com.github.yun531.weatherapp.infra.work
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.domain.AlertKind
+import com.github.yun531.weatherapp.domain.AlertTriggerService.TriggerResult
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
 import kotlinx.coroutines.Dispatchers
@@ -32,37 +32,56 @@ class TriggerFetchWorker(
                 TriggerType.HOURLY_TRIGGER -> service.executeHourly(regions)
             }
 
-            Log.d("ALERT", "type=$type events=${result.events.size} skipped=${result.skipped}")
-
-            if (result.skipped) return@withContext Result.success()
-
-            if (result.events.isEmpty()) {
-                val (title, body) = when (type) {
-                    TriggerType.HOURLY_TRIGGER -> {
-                        val catalog = RegionCatalog.get(applicationContext)
-                        val names = regions.joinToString(", ") { catalog.nameOf(it) }
-                        val kindLabel = AlertKind.noEventsLabel(s.enabledKinds)
-                        "정각 알림 · $names" to "$names: $kindLabel 없음"
-                    }
-                    TriggerType.DAILY_TRIGGER -> {
-                        val catalog = RegionCatalog.get(applicationContext)
-                        val names = regions.joinToString(", ") { catalog.nameOf(it) }
-                        "일기예보 요약 · $names" to "$names: 현재 요약할 비 소식이 없습니다"
-                    }
-                }
-                NotificationHelper.showSimple(applicationContext, title, body)
-                return@withContext Result.success()
+            when (result) {
+                is TriggerResult.Hourly -> handleHourly(result, regions, s.enabledKinds)
+                is TriggerResult.Daily -> handleDaily(result, regions)
             }
-
-            val title = when (type) {
-                TriggerType.DAILY_TRIGGER -> "일기예보 요약"
-                TriggerType.HOURLY_TRIGGER -> "정각 알림 (전체)"
-            }
-            NotificationHelper.showAlertEvents(applicationContext, title, result.events)
 
             Result.success()
         } catch (e: Exception) {
             Result.retry()
         }
+    }
+
+    private fun handleHourly(
+        result: TriggerResult.Hourly,
+        regions: List<String>,
+        enabledKinds: Set<AlertKind>
+    ) {
+        if (result.skipped) return
+
+        if (result.events.isEmpty()) {
+            val names = regionNames(regions)
+            val kindLabel = AlertKind.noEventsLabel(enabledKinds)
+            NotificationHelper.showSimple(
+                applicationContext,
+                "정각 알림 · $names",
+                "$names: $kindLabel 없음"
+            )
+            return
+        }
+
+        NotificationHelper.showAlertEvents(applicationContext, "정각 알림 (전체)", result.events)
+    }
+
+    private fun handleDaily(result: TriggerResult.Daily, regions: List<String>) {
+        if (result.skipped) return
+
+        if (result.briefings.all { it.isEmpty() }) {
+            val names = regionNames(regions)
+            NotificationHelper.showSimple(
+                applicationContext,
+                "일기예보 요약 · $names",
+                "$names: 현재 요약할 소식이 없습니다"
+            )
+            return
+        }
+
+        NotificationHelper.showRegionBriefings(applicationContext, "일기예보 요약", result.briefings)
+    }
+
+    private fun regionNames(regions: List<String>): String {
+        val catalog = RegionCatalog.get(applicationContext)
+        return regions.joinToString(", ") { catalog.nameOf(it) }
     }
 }
