@@ -6,6 +6,7 @@ import com.github.yun531.weatherapp.data.remote.api.AlertApi
 import com.github.yun531.weatherapp.data.remote.api.ForecastApi
 import com.github.yun531.weatherapp.data.settings.SettingsRepository
 import com.github.yun531.weatherapp.domain.AlertTriggerService
+import com.github.yun531.weatherapp.domain.briefing.BriefingLoader
 
 object ServiceLocator {
 
@@ -21,6 +22,9 @@ object ServiceLocator {
     lateinit var alertApi: AlertApi
         private set
 
+    lateinit var briefingLoader: BriefingLoader
+        private set
+
     lateinit var alertTriggerService: AlertTriggerService
         private set
 
@@ -31,6 +35,8 @@ object ServiceLocator {
         val retrofit = ApiClient.createRetrofit(AppConfig.BASE_URL)
         forecastApi = retrofit.create(ForecastApi::class.java)
         alertApi = retrofit.create(AlertApi::class.java)
-        alertTriggerService = AlertTriggerService(settingsRepo, alertApi, forecastApi)
+
+        briefingLoader = BriefingLoader(alertApi, forecastApi)
+        alertTriggerService = AlertTriggerService(settingsRepo, alertApi, briefingLoader)
     }
 }

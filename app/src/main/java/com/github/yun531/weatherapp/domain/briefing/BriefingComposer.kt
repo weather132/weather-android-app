@@ -25,17 +25,18 @@ object BriefingComposer {
         return regions.map { regionId ->
             RegionBriefing(
                 regionId = regionId,
-                rain = rainByRegion[regionId]?.let { toRainBriefing(it.payload) },
+                rain = rainByRegion[regionId]?.let { toRainBriefing(it) },
                 warnings = warningsByRegion[regionId].orEmpty().map { toWarningBriefing(it.payload) },
                 air = airByRegion[regionId]?.let { toAirBriefing(it) }
             )
         }
     }
 
-    private fun toRainBriefing(payload: JsonObject): RainBriefing =
+    private fun toRainBriefing(event: AlertEventDto): RainBriefing =
         RainBriefing(
-            intervals = parseIntervals(payload),
-            days = parseDays(payload)
+            intervals = parseIntervals(event.payload),
+            days = parseDays(event.payload),
+            announceTime = parseDateTime(event.occurredAt)
         )
 
     private fun parseIntervals(payload: JsonObject): List<RainBriefing.RainInterval> {
