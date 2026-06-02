@@ -7,10 +7,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.core.content.ContextCompat
 import com.github.yun531.weatherapp.ui.AppNav
+import com.github.yun531.weatherapp.ui.theme.WeatherAppTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -36,10 +35,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            MaterialTheme {
-                Surface {
-                    AppNav()
-                }
+            WeatherAppTheme {
+                AppNav()
             }
         }
     }

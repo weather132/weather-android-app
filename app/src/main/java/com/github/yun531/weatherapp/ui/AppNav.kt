@@ -25,6 +25,7 @@ fun AppNav() {
     val tabs = listOf(Tab.Briefing, Tab.Forecast, Tab.Settings)
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             NavigationBar {
                 val backStack by nav.currentBackStackEntryAsState()
