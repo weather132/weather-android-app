@@ -30,13 +30,21 @@ private val WeatherLightColors = lightColorScheme(
     inverseSurface = InverseSurface,
     inverseOnSurface = PageBackground,
 
+    surfaceBright = SurfaceBright,
+    surfaceDim = SurfaceDim,
+    surfaceContainerLowest = SurfaceContainerLowest,
+    surfaceContainerLow = SurfaceContainerLow,
+    surfaceContainer = SurfaceContainer,
+    surfaceContainerHigh = SurfaceContainerHigh,
+    surfaceContainerHighest = SurfaceContainerHighest,
+
     outline = OutlineStrong,
     outlineVariant = OutlineSoft,
 
     error = WarningRed,
     onError = OnBrand,
     errorContainer = WarningContainer,
-    onErrorContainer = OnWarningContainer,
+    onErrorContainer = OnWarningContainer
 )
 
 @Composable
