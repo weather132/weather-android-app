@@ -20,6 +20,7 @@ import com.github.yun531.weatherapp.domain.briefing.RegionBriefing
 import com.github.yun531.weatherapp.domain.briefing.WarningBriefing
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -33,6 +34,22 @@ import kotlin.random.Random
 object NotificationHelper {
 
     private const val CHANNEL_ID = "weather_alerts"
+
+    // ==================== 브리핑 표시 상수 ====================
+    private val BRIEFING_DATE_HOUR = DateTimeFormatter.ofPattern("M/d HH시")
+    private val BRIEFING_HOUR_ONLY = DateTimeFormatter.ofPattern("HH시")
+
+    private const val INDENT = "  "
+    private const val BULLET = "· "
+
+    private const val CATEGORY_RAIN = "비"
+    private const val CATEGORY_WARNING = "기상특보"
+    private const val CATEGORY_AIR = "미세먼지"
+
+    private const val LABEL_PM10 = "미세먼지"
+    private const val LABEL_PM25 = "초미세먼지"
+
+    private const val EMPTY_REGION_LINE = "특이사항 없음"
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -150,7 +167,13 @@ object NotificationHelper {
     }
 
     /**
-     * 일일 요약/브리핑 표시 로직
+     * 일일 요약/브리핑 표시 로직.
+     *
+     * 표현 규칙:
+     * - 카테고리 헤더(비/기상특보/미세먼지) + 들여쓴 하위 항목으로 그룹화.
+     * - 비는 시간 구간 + 일자별(오전/오후) 전망을 항목으로 전개.
+     * - 다지역이면 각 지역을 "[지역]" 헤더로 구분, 단일 지역이면 헤더 생략(제목이 지역명을 담음).
+     * - BigTextStyle 로 줄 수 제한 없이 표시.
      */
     fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>) {
         if (briefings.isEmpty()) return
@@ -168,73 +191,142 @@ object NotificationHelper {
         }
 
         val catalog = RegionCatalog.get(context)
-        val lines = buildBriefingLines(briefings, catalog)
-        if (lines.isEmpty()) return
+        val body = buildBriefingBody(briefings, catalog)
+        if (body.isBlank()) return
 
-        val style = NotificationCompat.InboxStyle()
-        lines.take(7).forEach { style.addLine(it) }
-        if (lines.size > 7) style.setSummaryText("+${lines.size - 7} more")
+        val collapsed = collapsedSummary(briefings, catalog) ?: title
 
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
-            .setContentText(lines.first())
-            .setStyle(style)
+            .setContentText(collapsed)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .build()
 
         nm.notify(Random.nextInt(Int.MAX_VALUE), n)
     }
 
-    private fun buildBriefingLines(
-        briefings: List<RegionBriefing>,
-        catalog: RegionCatalog
-    ): List<String> {
-        val lines = mutableListOf<String>()
-        briefings.forEach { b ->
-            val regionName = catalog.nameOf(b.regionId)
-            briefingSegments(b).forEach { seg -> lines += "$regionName: $seg" }
+    private data class CategoryBlock(val header: String, val items: List<String>)
+
+    private fun buildBriefingBody(briefings: List<RegionBriefing>, catalog: RegionCatalog): String {
+        val multiRegion = briefings.size > 1
+        return briefings.joinToString("\n\n") { regionBlock(it, catalog, multiRegion) }
+    }
+
+    private fun regionBlock(b: RegionBriefing, catalog: RegionCatalog, withHeader: Boolean): String {
+        val headerLines = if (withHeader) listOf("[${catalog.nameOf(b.regionId)}]") else emptyList()
+        val categories = briefingCategories(b)
+        val contentLines =
+            if (categories.isEmpty()) listOf("$INDENT$EMPTY_REGION_LINE")
+            else categories.flatMap { categoryLines(it) }
+        return (headerLines + contentLines).joinToString("\n")
+    }
+
+    private fun categoryLines(cat: CategoryBlock): List<String> =
+        listOf(cat.header) + cat.items.map { "$INDENT$BULLET$it" }
+
+    private fun briefingCategories(b: RegionBriefing): List<CategoryBlock> =
+        listOfNotNull(
+            rainCategory(b.rain),
+            warningCategory(b.warnings),
+            airCategory(b.air)
+        )
+
+    // ==================== 비 ====================
+
+    private fun rainCategory(rain: RainBriefing?): CategoryBlock? {
+        if (rain == null || !rain.hasAnyRain()) return null
+        val items = rainIntervalItems(rain) + rainDayItems(rain)
+        if (items.isEmpty()) return null
+        return CategoryBlock(CATEGORY_RAIN, items)
+    }
+
+    private fun rainIntervalItems(rain: RainBriefing): List<String> =
+        rain.intervals.map { intervalLabel(it) }
+
+    private fun intervalLabel(iv: RainBriefing.RainInterval): String {
+        val sameDay = iv.start.toLocalDate() == iv.end.toLocalDate()
+        val end = if (sameDay) iv.end.format(BRIEFING_HOUR_ONLY) else iv.end.format(BRIEFING_DATE_HOUR)
+        return "${iv.start.format(BRIEFING_DATE_HOUR)}~$end"
+    }
+
+    private fun rainDayItems(rain: RainBriefing): List<String> {
+        val baseDate = rain.announceTime?.toLocalDate() ?: return emptyList()
+        return rain.days.mapIndexedNotNull { offset, day -> rainDayItem(baseDate, offset, day) }
+    }
+
+    private fun rainDayItem(baseDate: LocalDate, offset: Int, day: RainBriefing.DayRain): String? {
+        val period = rainPeriodLabel(day) ?: return null
+        return "${dayOffsetLabel(baseDate, offset)} $period"
+    }
+
+    private fun rainPeriodLabel(day: RainBriefing.DayRain): String? = when {
+        day.rainAm && day.rainPm -> "오전·오후"
+        day.rainAm -> "오전"
+        day.rainPm -> "오후"
+        else -> null
+    }
+
+    private fun dayOffsetLabel(baseDate: LocalDate, offset: Int): String = when (offset) {
+        0 -> "오늘"
+        1 -> "내일"
+        2 -> "모레"
+        else -> baseDate.plusDays(offset.toLong()).let {
+            "${it.monthValue}/${it.dayOfMonth}(${weekdayLabel(it.dayOfWeek)})"
         }
-        return lines
     }
 
-    /** 한 지역의 비/특보/미세먼지를 표시 줄(segment)들로 변환 */
-    private fun briefingSegments(b: RegionBriefing): List<String> {
-        val segments = mutableListOf<String>()
-        b.rain?.let { segments += rainSegments(it) }
-        b.warnings.forEach { segments += warningSegment(it) }
-        b.air?.let { air -> airSegments(air).forEach { segments += it } }
-        return segments.ifEmpty { listOf("특이사항 없음") }
+    private fun weekdayLabel(dayOfWeek: DayOfWeek): String = when (dayOfWeek) {
+        DayOfWeek.MONDAY -> "월"
+        DayOfWeek.TUESDAY -> "화"
+        DayOfWeek.WEDNESDAY -> "수"
+        DayOfWeek.THURSDAY -> "목"
+        DayOfWeek.FRIDAY -> "금"
+        DayOfWeek.SATURDAY -> "토"
+        DayOfWeek.SUNDAY -> "일"
     }
 
-    private fun rainSegments(rain: RainBriefing): List<String> {
-        if (!rain.hasAnyRain()) return emptyList()
+    // ==================== 기상특보 ====================
 
-        val out = mutableListOf<String>()
-        val fmt = DateTimeFormatter.ofPattern("M/d HH시")
-        rain.intervals.forEach { iv ->
-            out += "비 ${iv.start.format(fmt)}~${iv.end.format(fmt)}"
-        }
-        val rainyDays = rain.days.count { it.rainAm || it.rainPm }
-        if (rainyDays > 0) out += "7일 중 ${rainyDays}일 비"
-        return out
+    private fun warningCategory(warnings: List<WarningBriefing>): CategoryBlock? {
+        if (warnings.isEmpty()) return null
+        val items = warnings.map { "${kindLabel(it.kind)} ${levelLabel(it.level)}" }
+        return CategoryBlock(CATEGORY_WARNING, items)
     }
 
-    private fun warningSegment(w: WarningBriefing): String =
-        "특보 ${kindLabel(w.kind)} ${levelLabel(w.level)}"
+    // ==================== 미세먼지 ====================
 
-    private fun airSegments(air: AirBriefing): List<String> {
-        if (!air.hasAnyMeasurement()) return emptyList()
-
-        val out = mutableListOf<String>()
-        air.pm10Grade?.let { out += pmSegment("미세먼지", it, air.pm10, air.pm10NeedsValue()) }
-        air.pm25Grade?.let { out += pmSegment("초미세먼지", it, air.pm25, air.pm25NeedsValue()) }
-        return out
+    private fun airCategory(air: AirBriefing?): CategoryBlock? {
+        if (air == null || !air.hasAnyMeasurement()) return null
+        val items = airItems(air)
+        if (items.isEmpty()) return null
+        return CategoryBlock(CATEGORY_AIR, items)
     }
 
-    private fun pmSegment(label: String, grade: String, value: Int?, withValue: Boolean): String =
+    private fun airItems(air: AirBriefing): List<String> {
+        val items = mutableListOf<String>()
+        air.pm10Grade?.let { items += pmItem(LABEL_PM10, it, air.pm10, air.pm10NeedsValue()) }
+        air.pm25Grade?.let { items += pmItem(LABEL_PM25, it, air.pm25, air.pm25NeedsValue()) }
+        return items
+    }
+
+    private fun pmItem(label: String, grade: String, value: Int?, withValue: Boolean): String =
         if (withValue && value != null) "$label ${gradeLabel(grade)} ${value}㎍/㎥"
         else "$label ${gradeLabel(grade)}"
+
+    // ==================== 접힌 상태 1줄 요약 ====================
+
+    private fun collapsedSummary(briefings: List<RegionBriefing>, catalog: RegionCatalog): String? {
+        val multiRegion = briefings.size > 1
+        for (b in briefings) {
+            val firstCategory = briefingCategories(b).firstOrNull() ?: continue
+            val firstItem = firstCategory.items.firstOrNull() ?: continue
+            val prefix = if (multiRegion) "[${catalog.nameOf(b.regionId)}] " else ""
+            return "$prefix${firstCategory.header} $firstItem"
+        }
+        return null
+    }
 
     private fun gradeLabel(grade: String): String = when (grade) {
         AirBriefing.Grade.GOOD -> "좋음"

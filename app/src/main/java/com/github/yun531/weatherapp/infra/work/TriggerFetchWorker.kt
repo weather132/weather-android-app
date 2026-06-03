@@ -77,8 +77,11 @@ class TriggerFetchWorker(
             return
         }
 
-        NotificationHelper.showRegionBriefings(applicationContext, "일기예보 요약", result.briefings)
+        NotificationHelper.showRegionBriefings(applicationContext, dailyTitle(regions), result.briefings)
     }
+
+    private fun dailyTitle(regions: List<String>): String =
+        if (regions.size == 1) "일기예보 요약 · ${regionNames(regions)}" else "일기예보 요약"
 
     private fun regionNames(regions: List<String>): String {
         val catalog = RegionCatalog.get(applicationContext)

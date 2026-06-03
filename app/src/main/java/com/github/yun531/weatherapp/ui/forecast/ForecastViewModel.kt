@@ -115,14 +115,18 @@ class ForecastViewModel : ViewModel() {
         viewModelScope.launch {
             val ctx = ServiceLocator.appContext
             try {
-                val events = withContext(Dispatchers.IO) {
-                    ServiceLocator.alertApi.getRainForecast(listOf(regionId))
+                val result = withContext(Dispatchers.IO) {
+                    ServiceLocator.alertTriggerService.executeDaily(listOf(regionId))
                 }
-                if (events.isEmpty()) {
-                    NotificationHelper.showSimple(ctx, regionName, "현재 요약할 비 소식이 없습니다")
+                if (result.skipped) return@launch
+
+                if (result.briefings.all { it.isEmpty() }) {
+                    NotificationHelper.showSimple(
+                        ctx, "일기예보 요약 · $regionName", "$regionName: 현재 요약할 소식이 없습니다"
+                    )
                     return@launch
                 }
-                NotificationHelper.showAlertEvents(ctx, "일기예보 요약 · $regionName", events)
+                NotificationHelper.showRegionBriefings(ctx, "일기예보 요약 · $regionName", result.briefings)
             } catch (e: Exception) {
                 Log.d("ALERT", "manual=button daily failed msg=${e.message}")
             }
