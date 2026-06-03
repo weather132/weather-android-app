@@ -98,16 +98,19 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val anyAlertEnabled = s.hourlyEnabled || s.dailyEnabled
+
             SectionHeader(BellIcon, "알림")
-            HourlyAlertCard(
-                hourlyEnabled = s.hourlyEnabled,
-                enabledKinds = s.enabledKinds,
-                warningKinds = s.warningKinds,
-                vm = vm
-            )
+            HourlyAlertCard(hourlyEnabled = s.hourlyEnabled, vm = vm)
             DailyAlertCard(
                 dailyEnabled = s.dailyEnabled,
                 dailyHour = s.dailyHour,
+                vm = vm
+            )
+            AlertKindsCard(
+                anyAlertEnabled = anyAlertEnabled,
+                enabledKinds = s.enabledKinds,
+                warningKinds = s.warningKinds,
                 vm = vm
             )
         }
@@ -162,54 +165,67 @@ private fun RegionSection(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HourlyAlertCard(
-    hourlyEnabled: Boolean,
+private fun HourlyAlertCard(hourlyEnabled: Boolean, vm: SettingsViewModel) {
+    SettingsCard {
+        AlertToggleRow(
+            icon = BellIcon,
+            title = "정각 알림",
+            subtitle = "매 정각에 조건에 맞는 알림을 생성합니다",
+            checked = hourlyEnabled,
+            onCheckedChange = { vm.setHourlyEnabled(it) }
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AlertKindsCard(
+    anyAlertEnabled: Boolean,
     enabledKinds: Set<AlertKind>,
     warningKinds: Set<WarningKind>,
     vm: SettingsViewModel
 ) {
     SettingsCard {
-        Column {
-            AlertToggleRow(
-                icon = BellIcon,
-                title = "정각 알림",
-                subtitle = "매 정각에 조건에 맞는 알림을 생성합니다",
-                checked = hourlyEnabled,
-                onCheckedChange = { vm.setHourlyEnabled(it) }
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "생성 항목",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            HorizontalDivider()
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Text(
+                "선택한 항목은 정각 알림과 일일 요약 알림에 공통으로 적용됩니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("생성 항목", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    AlertKindChip(CloudIcon, "일기예보", enabledKinds.contains(AlertKind.RAIN_ONSET), hourlyEnabled) {
-                        vm.toggleKind(AlertKind.RAIN_ONSET)
-                    }
-                    AlertKindChip(WarningIcon, "기상특보", enabledKinds.contains(AlertKind.WARNING_ISSUED), hourlyEnabled) {
-                        vm.toggleKind(AlertKind.WARNING_ISSUED)
-                    }
-                    AlertKindChip(AirIcon, "미세먼지", enabledKinds.contains(AlertKind.AIR_POLLUTION), hourlyEnabled) {
-                        vm.toggleKind(AlertKind.AIR_POLLUTION)
-                    }
+                AlertKindChip(CloudIcon, "일기예보", enabledKinds.contains(AlertKind.RAIN_ONSET), anyAlertEnabled) {
+                    vm.toggleKind(AlertKind.RAIN_ONSET)
                 }
-
-                AnimatedVisibility(visible = hourlyEnabled && enabledKinds.contains(AlertKind.WARNING_ISSUED)) {
-                    WarningKindPicker(warningKinds = warningKinds, vm = vm)
+                AlertKindChip(WarningIcon, "기상특보", enabledKinds.contains(AlertKind.WARNING_ISSUED), anyAlertEnabled) {
+                    vm.toggleKind(AlertKind.WARNING_ISSUED)
                 }
-
-                if (!hourlyEnabled) {
-                    Text(
-                        "정각 알림을 켜면 항목을 선택할 수 있습니다",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                AlertKindChip(AirIcon, "미세먼지", enabledKinds.contains(AlertKind.AIR_POLLUTION), anyAlertEnabled) {
+                    vm.toggleKind(AlertKind.AIR_POLLUTION)
                 }
+            }
+
+            AnimatedVisibility(visible = anyAlertEnabled && enabledKinds.contains(AlertKind.WARNING_ISSUED)) {
+                WarningKindPicker(warningKinds = warningKinds, vm = vm)
+            }
+
+            if (!anyAlertEnabled) {
+                Text(
+                    "정각 알림 또는 일일 요약 알림을 켜면 항목을 선택할 수 있습니다",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
