@@ -57,6 +57,10 @@ import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
+import com.github.yun531.weatherapp.ui.common.CalendarIcon
+import com.github.yun531.weatherapp.ui.common.ClockIcon
+import com.github.yun531.weatherapp.ui.common.RainDropIcon
+import com.github.yun531.weatherapp.ui.common.SectionHeader
 
 private const val RAIN_POP_THRESHOLD = 60
 

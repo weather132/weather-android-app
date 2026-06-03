@@ -1,14 +1,5 @@
-package com.github.yun531.weatherapp.ui.forecast
+package com.github.yun531.weatherapp.ui.common
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -16,19 +7,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-
-@Composable
-internal fun SectionHeader(icon: ImageVector, title: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    }
-}
 
 private fun strokeIcon(pathBuilder: PathBuilder.() -> Unit): ImageVector =
     ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
@@ -94,4 +73,75 @@ internal val AirIcon: ImageVector = strokeIcon {
     moveTo(3f, 16f)
     horizontalLineToRelative(9f)
     arcToRelative(2.5f, 2.5f, 0f, true, true, -2.5f, 2.5f)
+}
+
+internal val PinIcon: ImageVector = strokeIcon {
+    moveTo(12f, 22f)
+    curveTo(12f, 22f, 19f, 14f, 19f, 9f)
+    arcToRelative(7f, 7f, 0f, true, false, -14f, 0f)
+    curveTo(5f, 14f, 12f, 22f, 12f, 22f)
+    close()
+    moveTo(14.5f, 9f)
+    arcToRelative(2.5f, 2.5f, 0f, true, true, -5f, 0f)
+    arcToRelative(2.5f, 2.5f, 0f, true, true, 5f, 0f)
+    close()
+}
+
+internal val BellIcon: ImageVector = strokeIcon {
+    moveTo(18f, 8f)
+    arcToRelative(6f, 6f, 0f, false, false, -12f, 0f)
+    curveToRelative(0f, 7f, -3f, 9f, -3f, 9f)
+    horizontalLineToRelative(18f)
+    curveToRelative(0f, 0f, -3f, -2f, -3f, -9f)
+    moveTo(13.7f, 21f)
+    arcToRelative(2f, 2f, 0f, false, true, -3.4f, 0f)
+}
+
+internal val CloudIcon: ImageVector = strokeIcon {
+    moveTo(5f, 16f)
+    arcToRelative(4f, 4f, 0f, false, true, 0.5f, -8f)
+    arcToRelative(5.5f, 5.5f, 0f, false, true, 10.5f, 1f)
+    arcTo(3.5f, 3.5f, 0f, false, true, 16f, 16f)
+    close()
+}
+
+internal val WarningIcon: ImageVector = strokeIcon {
+    moveTo(12f, 3f)
+    lineTo(1.5f, 21f)
+    horizontalLineToRelative(21f)
+    close()
+    moveTo(12f, 9f)
+    verticalLineToRelative(5f)
+    moveTo(12f, 17.5f)
+    verticalLineToRelative(0.5f)
+}
+
+internal val ThermometerIcon: ImageVector = strokeIcon {
+    moveTo(10f, 13.5f)
+    verticalLineTo(5f)
+    arcToRelative(2f, 2f, 0f, true, true, 4f, 0f)
+    verticalLineToRelative(8.5f)
+    arcToRelative(4f, 4f, 0f, true, true, -4f, 0f)
+    close()
+}
+
+internal val DotsIcon: ImageVector = fillIcon {
+    moveTo(6.5f, 12f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, -3f, 0f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, 3f, 0f)
+    close()
+    moveTo(13.5f, 12f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, -3f, 0f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, 3f, 0f)
+    close()
+    moveTo(20.5f, 12f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, -3f, 0f)
+    arcToRelative(1.5f, 1.5f, 0f, true, true, 3f, 0f)
+    close()
+}
+
+internal val ChevronRightIcon: ImageVector = strokeIcon {
+    moveTo(9f, 6f)
+    lineToRelative(6f, 6f)
+    lineToRelative(-6f, 6f)
 }

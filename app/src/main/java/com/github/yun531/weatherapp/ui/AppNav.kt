@@ -1,22 +1,40 @@
 package com.github.yun531.weatherapp.ui
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.github.yun531.weatherapp.ui.briefing.BriefingScreen
 import com.github.yun531.weatherapp.ui.forecast.ForecastScreen
 import com.github.yun531.weatherapp.ui.settings.SettingsScreen
 
 private sealed class Tab(val route: String, val label: String, val icon: @Composable () -> Unit) {
-    data object Briefing : Tab("briefing", "브리핑", { Icon(Icons.Filled.Article, null) })
-    data object Forecast : Tab("forecast", "예보", { Icon(Icons.AutoMirrored.Filled.List, null) })
-    data object Settings : Tab("settings", "설정", { Icon(Icons.Filled.Settings, null) })
+    data object Briefing : Tab(
+        "briefing",
+        "브리핑",
+        { Icon(Icons.AutoMirrored.Filled.Article, null) }
+    )
+    data object Forecast : Tab(
+        "forecast",
+        "예보",
+        { Icon(Icons.AutoMirrored.Filled.List, null) })
+    data object Settings : Tab(
+        "settings",
+        "설정",
+        { Icon(Icons.Filled.Settings, null) })
 }
 
 @Composable

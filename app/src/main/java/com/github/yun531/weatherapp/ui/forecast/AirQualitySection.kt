@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import com.github.yun531.weatherapp.data.remote.dto.AirQualityDto
 import com.github.yun531.weatherapp.domain.AirQualityGrade
 import com.github.yun531.weatherapp.domain.Pollutant
+import com.github.yun531.weatherapp.ui.common.AirIcon
+import com.github.yun531.weatherapp.ui.common.SectionHeader
 
 @Composable
 internal fun AirQualitySection(airQuality: AirQualityDto?) {
