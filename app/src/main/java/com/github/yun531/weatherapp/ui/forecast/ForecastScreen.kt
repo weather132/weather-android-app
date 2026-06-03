@@ -48,32 +48,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.PathBuilder
-import androidx.compose.ui.graphics.vector.path
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
-import com.github.yun531.weatherapp.data.remote.dto.AirQualityDto
 import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
-import com.github.yun531.weatherapp.domain.AirQualityGrade
-import com.github.yun531.weatherapp.domain.Pollutant
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.util.Locale
 
 private const val RAIN_POP_THRESHOLD = 60
 
@@ -345,7 +328,10 @@ private fun HourlyCell(label: String, temp: Int, pop: Int) {
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("$temp°", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("$pop%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = popColor(pop))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Icon(RainDropIcon, contentDescription = null, tint = popColor(pop), modifier = Modifier.size(11.dp))
+            Text("$pop%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = popColor(pop))
+        }
     }
 }
 
@@ -399,9 +385,14 @@ private fun WeeklyRow(
     ) {
         Text(label, modifier = Modifier.width(28.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
-        Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(6.dp))
 
-        Row(modifier = Modifier.width(78.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.width(92.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Icon(RainDropIcon, contentDescription = null, tint = popColor(listOfNotNull(amPop, pmPop).maxOrNull()), modifier = Modifier.size(11.dp))
             Text(amPop?.toString() ?: "—", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(amPop))
             Text("/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(pmPop?.let { "$it%" } ?: "—", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(pmPop))
@@ -456,85 +447,6 @@ private fun TempRangeBar(minTemp: Int, maxTemp: Int, weekMin: Int, weekMax: Int,
 private fun popColor(pop: Int?): Color =
     if (pop != null && pop >= RAIN_POP_THRESHOLD) RainEmphasis else MaterialTheme.colorScheme.onSurfaceVariant
 
-// ==================== Air quality ====================
-
-@Composable
-private fun AirQualitySection(airQuality: AirQualityDto?) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
-        ) {
-            SectionHeader(AirIcon, "대기질")
-            PollutantBlock(
-                label = "미세먼지",
-                pollutant = Pollutant.PM10,
-                value = airQuality?.pm10,
-                grade = AirQualityGrade.fromWire(airQuality?.pm10Grade)
-            )
-            PollutantBlock(
-                label = "초미세먼지",
-                pollutant = Pollutant.PM25,
-                value = airQuality?.pm25,
-                grade = AirQualityGrade.fromWire(airQuality?.pm25Grade)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PollutantBlock(label: String, pollutant: Pollutant, value: Int?, grade: AirQualityGrade?) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (value == null || grade == null) {
-            Text("정보 없음", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-            Text(text = airQualityText(grade, value), fontWeight = FontWeight.Bold)
-            AirQualityBar(grade = grade, fraction = pollutant.fillFraction(value))
-        }
-    }
-}
-
-@Composable
-private fun airQualityText(grade: AirQualityGrade, value: Int) = buildAnnotatedString {
-    val gradeStyle = MaterialTheme.typography.titleMedium
-    val unitStyle = MaterialTheme.typography.titleSmall
-
-    withStyle(SpanStyle(fontSize = gradeStyle.fontSize, fontWeight = FontWeight.Bold, color = gradeColor(grade))) {
-        append(grade.label)
-    }
-    withStyle(SpanStyle(fontSize = unitStyle.fontSize, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-        append("(${value}㎍/㎥)")
-    }
-}
-
-@Composable
-private fun AirQualityBar(grade: AirQualityGrade, fraction: Float) {
-    val shape = RoundedCornerShape(4.dp)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction)
-                .height(10.dp)
-                .clip(shape)
-                .background(gradeColor(grade))
-        )
-    }
-}
-
-private fun gradeColor(grade: AirQualityGrade): Color = when (grade) {
-    AirQualityGrade.GOOD     -> Color(0xFF4FC3F7)
-    AirQualityGrade.MODERATE -> Color(0xFF66BB6A)
-    AirQualityGrade.BAD      -> Color(0xFFFFA726)
-    AirQualityGrade.VERY_BAD -> Color(0xFFEF5350)
-}
-
 // ==================== Placeholder ====================
 
 @Composable
@@ -546,116 +458,4 @@ private fun SectionPlaceholder(title: String) {
             Text("정보 없음", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
-}
-
-// ==================== Time / date helpers ====================
-
-private val FORECAST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
-
-private fun heroTimeLabel(announceTime: String): String? {
-    val t = parseTimeToSeoul(announceTime) ?: return null
-    return String.format(Locale.KOREA, "%02d:%02d 기준", t.hour, t.minute)
-}
-
-private fun updateLabel(announceTime: String): String {
-    val t = parseTimeToSeoul(announceTime) ?: return ""
-    return String.format(Locale.KOREA, "%02d:%02d 업데이트", t.hour, t.minute)
-}
-
-private fun baseDateOf(announceTime: String): LocalDate {
-    return try {
-        val at = LocalDateTime.parse(announceTime)
-        if (at.hour < 6) at.toLocalDate().minusDays(1) else at.toLocalDate()
-    } catch (_: Exception) {
-        val zdt = parseTimeToSeoul(announceTime)
-        when {
-            zdt == null  -> LocalDate.now(FORECAST_ZONE)
-            zdt.hour < 6 -> zdt.toLocalDate().minusDays(1)
-            else         -> zdt.toLocalDate()
-        }
-    }
-}
-
-private fun pointDate(daysAhead: Int, announceTime: String): LocalDate =
-    baseDateOf(announceTime).plusDays(daysAhead.toLong())
-
-private fun weekdayKo(date: LocalDate): String = when (date.dayOfWeek) {
-    DayOfWeek.MONDAY    -> "월"
-    DayOfWeek.TUESDAY   -> "화"
-    DayOfWeek.WEDNESDAY -> "수"
-    DayOfWeek.THURSDAY  -> "목"
-    DayOfWeek.FRIDAY    -> "금"
-    DayOfWeek.SATURDAY  -> "토"
-    DayOfWeek.SUNDAY    -> "일"
-}
-
-private fun dayLabel(daysAhead: Int, announceTime: String): String {
-    val date = pointDate(daysAhead, announceTime)
-    return if (date == LocalDate.now(FORECAST_ZONE)) "오늘" else weekdayKo(date)
-}
-
-// ==================== Section header & icons ====================
-
-@Composable
-private fun SectionHeader(icon: ImageVector, title: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp)
-    ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-    }
-}
-
-private fun strokeIcon(pathBuilder: PathBuilder.() -> Unit): ImageVector =
-    ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f)
-        .apply {
-            path(
-                stroke = SolidColor(Color.Black),
-                strokeLineWidth = 2f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round,
-                pathBuilder = pathBuilder
-            )
-        }
-        .build()
-
-private val ClockIcon: ImageVector = strokeIcon {
-    moveTo(3f, 12f)
-    arcToRelative(9f, 9f, 0f, true, true, 18f, 0f)
-    arcToRelative(9f, 9f, 0f, true, true, -18f, 0f)
-    moveTo(12f, 7f)
-    verticalLineToRelative(5f)
-    lineToRelative(3f, 2f)
-}
-
-private val CalendarIcon: ImageVector = strokeIcon {
-    moveTo(5f, 5f)
-    lineTo(19f, 5f)
-    arcToRelative(2f, 2f, 0f, false, true, 2f, 2f)
-    lineTo(21f, 19f)
-    arcToRelative(2f, 2f, 0f, false, true, -2f, 2f)
-    lineTo(5f, 21f)
-    arcToRelative(2f, 2f, 0f, false, true, -2f, -2f)
-    lineTo(3f, 7f)
-    arcToRelative(2f, 2f, 0f, false, true, 2f, -2f)
-    close()
-    moveTo(3f, 9f)
-    lineTo(21f, 9f)
-    moveTo(8f, 3f)
-    verticalLineToRelative(4f)
-    moveTo(16f, 3f)
-    verticalLineToRelative(4f)
-}
-
-private val AirIcon: ImageVector = strokeIcon {
-    moveTo(3f, 8f)
-    horizontalLineToRelative(11f)
-    arcToRelative(3f, 3f, 0f, true, false, -3f, -3f)
-    moveTo(3f, 12f)
-    horizontalLineToRelative(15f)
-    arcToRelative(2.5f, 2.5f, 0f, true, true, -2.5f, 2.5f)
-    moveTo(3f, 16f)
-    horizontalLineToRelative(9f)
-    arcToRelative(2.5f, 2.5f, 0f, true, true, -2.5f, 2.5f)
 }
