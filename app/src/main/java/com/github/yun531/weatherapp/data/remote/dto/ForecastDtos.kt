@@ -20,10 +20,10 @@ data class DailyForecastDto(
 
 data class ForecastDailyPoint(
     val daysAhead: Int,
-    val maxTemp: Int,
-    val minTemp: Int,
-    val amPop: Int,
-    val pmPop: Int
+    val maxTemp: Int?,
+    val minTemp: Int?,
+    val amPop: Int?,
+    val pmPop: Int?
 )
 
 data class AirQualityDto(

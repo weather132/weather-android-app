@@ -274,7 +274,11 @@ private fun CurrentConditionHero(hourly: HourlyForecastDto?, daily: DailyForecas
             ) {
                 today?.maxTemp?.let { HeroMeta("최고", "$it°") }
                 today?.minTemp?.let { HeroMeta("최저", "$it°") }
-                today?.let { HeroMeta("오늘 강수", "${maxOf(it.amPop, it.pmPop)}%") }
+                today?.let { d ->
+                    listOfNotNull(d.amPop, d.pmPop).maxOrNull()?.let { pop ->
+                        HeroMeta("오늘 강수", "$pop%")
+                    }
+                }
             }
         }
     }
@@ -343,8 +347,8 @@ private fun HourlyCell(label: String, temp: Int, pop: Int) {
 @Composable
 private fun WeeklyForecastCard(daily: DailyForecastDto) {
     val points = daily.dailyPoints
-    val weekMin = points.minOf { it.minTemp }
-    val weekMax = points.maxOf { it.maxTemp }
+    val weekMin = points.mapNotNull { it.minTemp }.minOrNull()
+    val weekMax = points.mapNotNull { it.maxTemp }.maxOrNull()
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
@@ -375,12 +379,12 @@ private fun WeeklyForecastCard(daily: DailyForecastDto) {
 @Composable
 private fun WeeklyRow(
     label: String,
-    amPop: Int,
-    pmPop: Int,
-    minTemp: Int,
-    maxTemp: Int,
-    weekMin: Int,
-    weekMax: Int
+    amPop: Int?,
+    pmPop: Int?,
+    minTemp: Int?,
+    maxTemp: Int?,
+    weekMin: Int?,
+    weekMax: Int?
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
@@ -388,27 +392,33 @@ private fun WeeklyRow(
     ) {
         Text(label, modifier = Modifier.width(28.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
 
+        Spacer(Modifier.width(8.dp))
+
         Row(modifier = Modifier.width(78.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("$amPop", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(amPop))
+            Text(amPop?.toString() ?: "—", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(amPop))
             Text("/", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("$pmPop%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(pmPop))
+            Text(pmPop?.let { "$it%" } ?: "—", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = popColor(pmPop))
         }
 
         Text(
-            "$minTemp°",
+            minTemp?.let { "$it°" } ?: "—",
             modifier = Modifier.width(28.dp),
             textAlign = TextAlign.End,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        TempRangeBar(
-            minTemp = minTemp,
-            maxTemp = maxTemp,
-            weekMin = weekMin,
-            weekMax = weekMax,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-        )
-        Text("$maxTemp°", modifier = Modifier.width(30.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+        if (minTemp != null && maxTemp != null && weekMin != null && weekMax != null) {
+            TempRangeBar(
+                minTemp = minTemp,
+                maxTemp = maxTemp,
+                weekMin = weekMin,
+                weekMax = weekMax,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            )
+        } else {
+            Spacer(Modifier.weight(1f))
+        }
+        Text(maxTemp?.let { "$it°" } ?: "—", modifier = Modifier.width(30.dp), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -436,8 +446,8 @@ private fun TempRangeBar(minTemp: Int, maxTemp: Int, weekMin: Int, weekMax: Int,
 }
 
 @Composable
-private fun popColor(pop: Int): Color =
-    if (pop >= RAIN_POP_THRESHOLD) RainEmphasis else MaterialTheme.colorScheme.onSurfaceVariant
+private fun popColor(pop: Int?): Color =
+    if (pop != null && pop >= RAIN_POP_THRESHOLD) RainEmphasis else MaterialTheme.colorScheme.onSurfaceVariant
 
 // ==================== Air quality ====================
 
