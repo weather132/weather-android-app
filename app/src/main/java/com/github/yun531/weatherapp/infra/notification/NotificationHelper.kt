@@ -6,6 +6,9 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -36,15 +39,21 @@ object NotificationHelper {
     private const val CHANNEL_ID = "weather_alerts"
 
     // ==================== 브리핑 표시 상수 ====================
+    // announceTime 이 없는 fallback 경로에서만 사용하는 절대 시각 포매터
     private val BRIEFING_DATE_HOUR = DateTimeFormatter.ofPattern("M/d HH시")
     private val BRIEFING_HOUR_ONLY = DateTimeFormatter.ofPattern("HH시")
 
+    // 제목에 덧붙는 작은 글씨 날짜
+    private val TITLE_DATE = DateTimeFormatter.ofPattern("M/d")
+    private const val TITLE_DATE_SCALE = 0.8f
+
     private const val INDENT = "  "
     private const val BULLET = "· "
+    private const val REGION_RULE = "─────"
 
     private const val CATEGORY_RAIN = "비"
     private const val CATEGORY_WARNING = "기상특보"
-    private const val CATEGORY_AIR = "미세먼지"
+    private const val CATEGORY_AIR = "대기질"
 
     private const val LABEL_PM10 = "미세먼지"
     private const val LABEL_PM25 = "초미세먼지"
@@ -170,9 +179,10 @@ object NotificationHelper {
      * 일일 요약/브리핑 표시 로직.
      *
      * 표현 규칙:
-     * - 카테고리 헤더(비/기상특보/미세먼지) + 들여쓴 하위 항목으로 그룹화.
-     * - 비는 시간 구간 + 일자별(오전/오후) 전망을 항목으로 전개.
-     * - 다지역이면 각 지역을 "[지역]" 헤더로 구분, 단일 지역이면 헤더 생략(제목이 지역명을 담음).
+     * - 카테고리 헤더([비]/[대기질]/[기상특보]) + 들여쓴 하위 항목으로 그룹화.
+     * - 비는 시간 구간 + 일자별(오전/오후) 전망을 항목으로 전개. 날짜는 '오늘/내일/모레/M/d(요일)' 상대 표기.
+     * - 다지역이면 각 지역을 "─────[지역]─────" 규칙선으로 구분, 단일 지역이면 생략(제목이 지역명을 담음).
+     * - 제목에는 기준일을 작은 글씨 "(M/d)" 로 덧붙여 본문의 '오늘'을 고정.
      * - BigTextStyle 로 줄 수 제한 없이 표시.
      */
     fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>) {
@@ -194,11 +204,12 @@ object NotificationHelper {
         val body = buildBriefingBody(briefings, catalog)
         if (body.isBlank()) return
 
+        val baseDate = briefingBaseDate(briefings) ?: LocalDate.now()
         val collapsed = collapsedSummary(briefings, catalog) ?: title
 
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentTitle(title)
+            .setContentTitle(styledTitle(title, baseDate))
             .setContentText(collapsed)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
@@ -209,22 +220,40 @@ object NotificationHelper {
 
     private data class CategoryBlock(val header: String, val items: List<String>)
 
+    private fun styledTitle(baseTitle: String, date: LocalDate): CharSequence {
+        val datePart = " (${date.format(TITLE_DATE)})"
+        val builder = SpannableStringBuilder(baseTitle).append(datePart)
+        builder.setSpan(
+            RelativeSizeSpan(TITLE_DATE_SCALE),
+            baseTitle.length,
+            builder.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        return builder
+    }
+
+    /** 본문/제목 기준일: 첫 비 브리핑의 발표일. 비가 없으면 호출부에서 디바이스 오늘로 대체. */
+    private fun briefingBaseDate(briefings: List<RegionBriefing>): LocalDate? =
+        briefings.firstNotNullOfOrNull { it.rain?.announceTime?.toLocalDate() }
+
     private fun buildBriefingBody(briefings: List<RegionBriefing>, catalog: RegionCatalog): String {
         val multiRegion = briefings.size > 1
         return briefings.joinToString("\n\n") { regionBlock(it, catalog, multiRegion) }
     }
 
-    private fun regionBlock(b: RegionBriefing, catalog: RegionCatalog, withHeader: Boolean): String {
-        val headerLines = if (withHeader) listOf("[${catalog.nameOf(b.regionId)}]") else emptyList()
+    private fun regionBlock(b: RegionBriefing, catalog: RegionCatalog, withRule: Boolean): String {
+        val ruleLines =
+            if (withRule) listOf("$REGION_RULE[${catalog.nameOf(b.regionId)}]$REGION_RULE")
+            else emptyList()
         val categories = briefingCategories(b)
         val contentLines =
             if (categories.isEmpty()) listOf("$INDENT$EMPTY_REGION_LINE")
             else categories.flatMap { categoryLines(it) }
-        return (headerLines + contentLines).joinToString("\n")
+        return (ruleLines + contentLines).joinToString("\n")
     }
 
     private fun categoryLines(cat: CategoryBlock): List<String> =
-        listOf(cat.header) + cat.items.map { "$INDENT$BULLET$it" }
+        listOf("[${cat.header}]") + cat.items.map { "$INDENT$BULLET$it" }
 
     private fun briefingCategories(b: RegionBriefing): List<CategoryBlock> =
         listOfNotNull(
@@ -242,10 +271,23 @@ object NotificationHelper {
         return CategoryBlock(CATEGORY_RAIN, items)
     }
 
-    private fun rainIntervalItems(rain: RainBriefing): List<String> =
-        rain.intervals.map { intervalLabel(it) }
+    private fun rainIntervalItems(rain: RainBriefing): List<String> {
+        val base = rain.announceTime?.toLocalDate()
+        return rain.intervals.map { intervalLabel(it, base) }
+    }
 
-    private fun intervalLabel(iv: RainBriefing.RainInterval): String {
+    private fun intervalLabel(iv: RainBriefing.RainInterval, base: LocalDate?): String {
+        if (base == null) return absoluteIntervalLabel(iv)
+
+        val startLabel = relativeDayLabel(iv.start.toLocalDate(), base)
+        if (iv.start.toLocalDate() == iv.end.toLocalDate()) {
+            return "$startLabel ${iv.start.hour}시~${iv.end.hour}시"
+        }
+        val endLabel = relativeDayLabel(iv.end.toLocalDate(), base)
+        return "$startLabel ${iv.start.hour}시~$endLabel ${iv.end.hour}시"
+    }
+
+    private fun absoluteIntervalLabel(iv: RainBriefing.RainInterval): String {
         val sameDay = iv.start.toLocalDate() == iv.end.toLocalDate()
         val end = if (sameDay) iv.end.format(BRIEFING_HOUR_ONLY) else iv.end.format(BRIEFING_DATE_HOUR)
         return "${iv.start.format(BRIEFING_DATE_HOUR)}~$end"
@@ -267,6 +309,9 @@ object NotificationHelper {
         day.rainPm -> "오후"
         else -> null
     }
+
+    private fun relativeDayLabel(date: LocalDate, base: LocalDate): String =
+        dayOffsetLabel(base, ChronoUnit.DAYS.between(base, date).toInt())
 
     private fun dayOffsetLabel(baseDate: LocalDate, offset: Int): String = when (offset) {
         0 -> "오늘"
@@ -295,7 +340,7 @@ object NotificationHelper {
         return CategoryBlock(CATEGORY_WARNING, items)
     }
 
-    // ==================== 미세먼지 ====================
+    // ==================== 대기질 ====================
 
     private fun airCategory(air: AirBriefing?): CategoryBlock? {
         if (air == null || !air.hasAnyMeasurement()) return null
