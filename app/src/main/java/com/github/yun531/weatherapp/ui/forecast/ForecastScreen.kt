@@ -251,7 +251,7 @@ private fun CurrentConditionHero(hourly: HourlyForecastDto?, daily: DailyForecas
         Column {
             heroTimeLabel(hourly.announceTime)?.let {
                 Text(
-                    "지금 · $it",
+                    it,
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.92f)
                 )

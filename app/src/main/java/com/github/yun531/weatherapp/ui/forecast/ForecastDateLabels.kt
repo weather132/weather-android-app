@@ -10,7 +10,7 @@ private val FORECAST_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 internal fun heroTimeLabel(announceTime: String): String? {
     val t = parseTimeToSeoul(announceTime) ?: return null
-    return String.format(Locale.KOREA, "%02d:%02d 기준", t.hour, t.minute)
+    return String.format(Locale.KOREA, "%02d/%02d %02d:%02d 업데이트", t.monthValue, t.dayOfMonth, t.hour, t.minute)
 }
 
 internal fun updateLabel(announceTime: String): String {
