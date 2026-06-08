@@ -11,24 +11,6 @@
         android:scaleY="0.88">
         <path
             android:strokeColor="#FFFFFF"
-            android:strokeAlpha="0.1"
-            android:strokeWidth="2"
-            android:pathData="M24,82 a30,8 0 1,0 60,0 a30,8 0 1,0 -60,0" />
-        <path
-            android:strokeColor="#FFFFFF"
-            android:strokeAlpha="0.1"
-            android:strokeWidth="2"
-            android:pathData="M10,82 a44,12 0 1,0 88,0 a44,12 0 1,0 -88,0" />
-        <path
-            android:strokeColor="#FFFFFF"
-            android:strokeAlpha="0.2"
-            android:strokeWidth="1.8"
-            android:strokeLineCap="round"
-            android:pathData="M22,7 L19.5,19   M44,9 L41.5,21   M66,7 L63.5,19   M88,9 L85.5,21
-            M12,34 L9.5,46   M96,34 L93.5,46
-            M14,58 L11.5,70   M94,58 L91.5,70" />
-        <path
-            android:strokeColor="#FFFFFF"
             android:strokeWidth="3.4"
             android:strokeLineCap="round"
             android:pathData="M54,60 L54,84 Q54,91 47,91 Q42,91 42,86" />
