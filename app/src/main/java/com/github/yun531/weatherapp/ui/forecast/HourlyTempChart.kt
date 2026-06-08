@@ -33,8 +33,8 @@ fun HourlyTempChart(
     val dotColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onSurface
     val subTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val rainBgColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
-    val rainAccentColor = MaterialTheme.colorScheme.tertiary
+    val rainBgColor = RainTint
+    val rainAccentColor = RainEmphasis
     val density = LocalDensity.current
     val tempLabelSizePx = with(density) { 11.sp.toPx() }
     val timeLabelSizePx = with(density) { 10.sp.toPx() }

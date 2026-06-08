@@ -64,7 +64,8 @@ import com.github.yun531.weatherapp.ui.common.SectionHeader
 
 private const val RAIN_POP_THRESHOLD = 60
 
-private val RainEmphasis = Color(0xFF1976D2)
+internal val RainEmphasis = Color(0xFF1976D2)
+internal val RainTint = RainEmphasis.copy(alpha = 0.08f)
 private val TempLow = Color(0xFF4FA3E0)
 private val TempHigh = Color(0xFFFF9F45)
 private val HeroGradient = listOf(Color(0xFF3D7CEC), Color(0xFF5C9BF0), Color(0xFF83B6F4))
@@ -325,7 +326,7 @@ private fun HourlyCell(label: String, temp: Int, pop: Int) {
         modifier = Modifier
             .width(64.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .background(hourlyCellBackground(pop))
             .padding(vertical = 11.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -450,6 +451,11 @@ private fun TempRangeBar(minTemp: Int, maxTemp: Int, weekMin: Int, weekMax: Int,
 @Composable
 private fun popColor(pop: Int?): Color =
     if (pop != null && pop >= RAIN_POP_THRESHOLD) RainEmphasis else MaterialTheme.colorScheme.onSurfaceVariant
+
+@Composable
+private fun hourlyCellBackground(pop: Int): Color =
+    if (pop >= RAIN_POP_THRESHOLD) RainTint
+    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
 
 // ==================== Placeholder ====================
 
