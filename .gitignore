@@ -1,15 +1,42 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# =========================
+# Android / Gradle outputs
+# =========================
+.gradle/
+**/build/
+*.apk
+*.aab
+*.aar
+
+# =========================
+# Local machine config
+# =========================
 local.properties
+
+# =========================
+# IntelliJ / Android Studio
+# =========================
+.idea/
+*.iml
+*.ipr
+*.iws
+/out/
+
+# =========================
+# Kotlin / Java
+# =========================
+*.class
+*.log
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Signing keys (중요)
+# =========================
+*.jks
+*.keystore
+key.properties
+keystore.properties
