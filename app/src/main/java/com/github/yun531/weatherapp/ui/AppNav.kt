@@ -11,7 +11,9 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -23,24 +25,35 @@ import com.github.yun531.weatherapp.ui.settings.SettingsScreen
 
 private sealed class Tab(val route: String, val label: String, val icon: @Composable () -> Unit) {
     data object Briefing : Tab(
-        "briefing",
+        NavRoutes.BRIEFING,
         "브리핑",
         { Icon(Icons.AutoMirrored.Filled.Article, null) }
     )
     data object Forecast : Tab(
-        "forecast",
+        NavRoutes.FORECAST,
         "예보",
-        { Icon(Icons.AutoMirrored.Filled.List, null) })
+        { Icon(Icons.AutoMirrored.Filled.List, null) }
+    )
     data object Settings : Tab(
-        "settings",
+        NavRoutes.SETTINGS,
         "설정",
-        { Icon(Icons.Filled.Settings, null) })
+        { Icon(Icons.Filled.Settings, null) }
+    )
 }
 
 @Composable
-fun AppNav() {
+fun AppNav(
+    startRoute: String? = null,
+    onStartRouteHandled: () -> Unit = {}
+) {
     val nav = rememberNavController()
     val tabs = listOf(Tab.Briefing, Tab.Forecast, Tab.Settings)
+
+    LaunchedEffect(startRoute) {
+        if (startRoute == null) return@LaunchedEffect
+        nav.navigateToTab(startRoute)
+        onStartRouteHandled()
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -52,13 +65,7 @@ fun AppNav() {
                 tabs.forEach { tab ->
                     NavigationBarItem(
                         selected = currentRoute == tab.route,
-                        onClick = {
-                            nav.navigate(tab.route) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { nav.navigateToTab(tab.route) },
                         icon = tab.icon,
                         label = { Text(tab.label) }
                     )
@@ -66,10 +73,18 @@ fun AppNav() {
             }
         }
     ) { padding ->
-        NavHost(navController = nav, startDestination = Tab.Briefing.route) {
-            composable(Tab.Briefing.route) { BriefingScreen(padding) }
-            composable(Tab.Forecast.route) { ForecastScreen(padding) }
-            composable(Tab.Settings.route) { SettingsScreen(padding) }
+        NavHost(navController = nav, startDestination = NavRoutes.BRIEFING) {
+            composable(NavRoutes.BRIEFING) { BriefingScreen(padding) }
+            composable(NavRoutes.FORECAST) { ForecastScreen(padding) }
+            composable(NavRoutes.SETTINGS) { SettingsScreen(padding) }
         }
+    }
+}
+
+private fun NavController.navigateToTab(route: String) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }

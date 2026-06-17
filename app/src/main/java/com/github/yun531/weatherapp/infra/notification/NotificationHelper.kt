@@ -3,7 +3,9 @@ package com.github.yun531.weatherapp.infra.notification
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.text.SpannableStringBuilder
@@ -12,6 +14,7 @@ import android.text.style.RelativeSizeSpan
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.github.yun531.weatherapp.MainActivity
 import com.github.yun531.weatherapp.R
 import com.github.yun531.weatherapp.data.region.RegionCatalog
 import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
@@ -21,6 +24,7 @@ import com.github.yun531.weatherapp.domain.briefing.AirBriefing
 import com.github.yun531.weatherapp.domain.briefing.RainBriefing
 import com.github.yun531.weatherapp.domain.briefing.RegionBriefing
 import com.github.yun531.weatherapp.domain.briefing.WarningBriefing
+import com.github.yun531.weatherapp.ui.NavRoutes
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import java.time.DayOfWeek
@@ -60,6 +64,12 @@ object NotificationHelper {
 
     private const val EMPTY_REGION_LINE = "특이사항 없음"
 
+    // ==================== 알림 생성 및 보류(Pending) 인텐트 상수 ====================
+    private const val SIMPLE_NOTIFICATION_ID = 999001
+
+    private val CONTENT_INTENT_FLAGS =
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = context.getSystemService(NotificationManager::class.java)
@@ -85,16 +95,26 @@ object NotificationHelper {
     }
 
     /**
+     * 특정 화면(Route)으로 이동하기 위한 PendingIntent를 생성.
+     */
+    private fun contentIntent(context: Context, route: String, requestCode: Int): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(NavRoutes.EXTRA_START_ROUTE, route)
+        }
+        return PendingIntent.getActivity(context, requestCode, intent, CONTENT_INTENT_FLAGS)
+    }
+
+    /**
      * 디버그용: events가 비어도 파이프라인(FCM 수신 → Worker 실행 → 알림 생성) 확인을 위해
      * 알림 1개를 강제로 띄움.
      */
-    fun showSimple(context: Context, title: String, text: String) {
+    fun showSimple(context: Context, title: String, text: String, route: String) {
         ensureChannel(context)
 
         val nm = NotificationManagerCompat.from(context)
         if (!nm.areNotificationsEnabled()) return
 
-        // Lint(MissingPermission) 대응: notify 직전에 명시적으로 체크
         if (Build.VERSION.SDK_INT >= 33) {
             val granted = ContextCompat.checkSelfPermission(
                 context,
@@ -108,13 +128,14 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(contentIntent(context, route, SIMPLE_NOTIFICATION_ID))
             .setAutoCancel(true)
             .build()
 
-        nm.notify(999001, n)
+        nm.notify(SIMPLE_NOTIFICATION_ID, n)
     }
 
-    fun showAlertEvents(context: Context, title: String, events: List<AlertEventDto>) {
+    fun showAlertEvents(context: Context, title: String, events: List<AlertEventDto>, route: String) {
         if (events.isEmpty()) return
         ensureChannel(context)
 
@@ -164,15 +185,17 @@ object NotificationHelper {
         lines.take(7).forEach { style.addLine(it) }
         if (lines.size > 7) style.setSummaryText("+${lines.size - 7} more")
 
+        val notificationId = Random.nextInt(Int.MAX_VALUE)
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
             .setContentText(lines.first())
             .setStyle(style)
+            .setContentIntent(contentIntent(context, route, notificationId))
             .setAutoCancel(true)
             .build()
 
-        nm.notify(Random.nextInt(Int.MAX_VALUE), n)
+        nm.notify(notificationId, n)
     }
 
     /**
@@ -185,7 +208,7 @@ object NotificationHelper {
      * - 제목에는 기준일을 작은 글씨 "(M/d)" 로 덧붙여 본문의 '오늘'을 고정.
      * - BigTextStyle 로 줄 수 제한 없이 표시.
      */
-    fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>) {
+    fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>, route: String) {
         if (briefings.isEmpty()) return
         ensureChannel(context)
 
@@ -207,15 +230,17 @@ object NotificationHelper {
         val baseDate = briefingBaseDate(briefings) ?: LocalDate.now()
         val collapsed = collapsedSummary(briefings, catalog) ?: title
 
+        val notificationId = Random.nextInt(Int.MAX_VALUE)
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(styledTitle(title, baseDate))
             .setContentText(collapsed)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(contentIntent(context, route, notificationId))
             .setAutoCancel(true)
             .build()
 
-        nm.notify(Random.nextInt(Int.MAX_VALUE), n)
+        nm.notify(notificationId, n)
     }
 
     private data class CategoryBlock(val header: String, val items: List<String>)

@@ -10,6 +10,7 @@ import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
 import com.github.yun531.weatherapp.domain.AlertKind.Companion.noEventsLabel
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
+import com.github.yun531.weatherapp.ui.NavRoutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,11 +100,15 @@ class ForecastViewModel : ViewModel() {
                 if (events.isEmpty()) {
                     val kindLabel = noEventsLabel(s.enabledKinds)
                     NotificationHelper.showSimple(
-                        ctx, "정각 알림 · $regionName", "$regionName: $kindLabel 없음"
+                        ctx, "정각 알림 · $regionName", "$regionName: $kindLabel 없음",
+                        NavRoutes.FORECAST
                     )
                     return@launch
                 }
-                NotificationHelper.showAlertEvents(ctx, "정각 알림 · $regionName", events)
+                NotificationHelper.showAlertEvents(
+                    ctx, "정각 알림 · $regionName", events,
+                    NavRoutes.FORECAST
+                )
             } catch (e: Exception) {
                 Log.d("ALERT", "manual=button hourly failed msg=${e.message}")
             }
@@ -122,11 +127,15 @@ class ForecastViewModel : ViewModel() {
 
                 if (result.briefings.all { it.isEmpty() }) {
                     NotificationHelper.showSimple(
-                        ctx, "일기예보 요약 · $regionName", "$regionName: 현재 요약할 소식이 없습니다"
+                        ctx, "일기예보 요약 · $regionName", "$regionName: 현재 요약할 소식이 없습니다",
+                        NavRoutes.BRIEFING
                     )
                     return@launch
                 }
-                NotificationHelper.showRegionBriefings(ctx, "일기예보 요약 · $regionName", result.briefings)
+                NotificationHelper.showRegionBriefings(
+                    ctx, "일기예보 요약 · $regionName", result.briefings,
+                    NavRoutes.BRIEFING
+                )
             } catch (e: Exception) {
                 Log.d("ALERT", "manual=button daily failed msg=${e.message}")
             }

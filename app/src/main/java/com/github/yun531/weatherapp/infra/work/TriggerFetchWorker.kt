@@ -9,6 +9,7 @@ import com.github.yun531.weatherapp.domain.AlertKind
 import com.github.yun531.weatherapp.domain.AlertTriggerService.TriggerResult
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
+import com.github.yun531.weatherapp.ui.NavRoutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -56,12 +57,18 @@ class TriggerFetchWorker(
             NotificationHelper.showSimple(
                 applicationContext,
                 "정각 알림 · $names",
-                "$names: $kindLabel 없음"
+                "$names: $kindLabel 없음",
+                NavRoutes.FORECAST
             )
             return
         }
 
-        NotificationHelper.showAlertEvents(applicationContext, "정각 알림 (전체)", result.events)
+        NotificationHelper.showAlertEvents(
+            applicationContext,
+            "정각 알림 (전체)",
+            result.events,
+            NavRoutes.FORECAST
+        )
     }
 
     private fun handleDaily(result: TriggerResult.Daily, regions: List<String>) {
@@ -72,12 +79,18 @@ class TriggerFetchWorker(
             NotificationHelper.showSimple(
                 applicationContext,
                 "일기예보 요약 · $names",
-                "$names: 현재 요약할 소식이 없습니다"
+                "$names: 현재 요약할 소식이 없습니다",
+                NavRoutes.BRIEFING
             )
             return
         }
 
-        NotificationHelper.showRegionBriefings(applicationContext, dailyTitle(regions), result.briefings)
+        NotificationHelper.showRegionBriefings(
+            applicationContext,
+            dailyTitle(regions),
+            result.briefings,
+            NavRoutes.BRIEFING
+        )
     }
 
     private fun dailyTitle(regions: List<String>): String =
