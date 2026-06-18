@@ -6,4 +6,5 @@ object NavRoutes {
     const val SETTINGS = "settings"
 
     const val EXTRA_START_ROUTE = "extra_start_route"
+    const val EXTRA_FORECAST_REGION_ID = "extra_forecast_region_id"
 }

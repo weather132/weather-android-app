@@ -5,10 +5,12 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.github.yun531.weatherapp.core.ServiceLocator
 import com.github.yun531.weatherapp.data.region.RegionCatalog
+import com.github.yun531.weatherapp.data.remote.dto.AlertEventDto
 import com.github.yun531.weatherapp.domain.AlertKind
 import com.github.yun531.weatherapp.domain.AlertTriggerService.TriggerResult
 import com.github.yun531.weatherapp.domain.TriggerType
 import com.github.yun531.weatherapp.infra.notification.NotificationHelper
+import com.github.yun531.weatherapp.infra.notification.NotificationTarget
 import com.github.yun531.weatherapp.ui.NavRoutes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -58,7 +60,7 @@ class TriggerFetchWorker(
                 applicationContext,
                 "정각 알림 · $names",
                 "$names: $kindLabel 없음",
-                NavRoutes.FORECAST
+                NotificationTarget.Forecast(null)
             )
             return
         }
@@ -67,7 +69,7 @@ class TriggerFetchWorker(
             applicationContext,
             "정각 알림 (전체)",
             result.events,
-            NavRoutes.FORECAST
+            NotificationTarget.Forecast(priorityTarget(regions, result.events))
         )
     }
 
@@ -80,7 +82,7 @@ class TriggerFetchWorker(
                 applicationContext,
                 "일기예보 요약 · $names",
                 "$names: 현재 요약할 소식이 없습니다",
-                NavRoutes.BRIEFING
+                NotificationTarget.Briefing
             )
             return
         }
@@ -89,8 +91,13 @@ class TriggerFetchWorker(
             applicationContext,
             dailyTitle(regions),
             result.briefings,
-            NavRoutes.BRIEFING
+            NotificationTarget.Briefing
         )
+    }
+
+    private fun priorityTarget(regions: List<String>, events: List<AlertEventDto>): String? {
+        val alerted = events.mapTo(mutableSetOf()) { it.regionId }
+        return regions.firstOrNull { it in alerted }
     }
 
     private fun dailyTitle(regions: List<String>): String =

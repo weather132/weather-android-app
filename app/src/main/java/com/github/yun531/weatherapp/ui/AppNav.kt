@@ -44,7 +44,9 @@ private sealed class Tab(val route: String, val label: String, val icon: @Compos
 @Composable
 fun AppNav(
     startRoute: String? = null,
-    onStartRouteHandled: () -> Unit = {}
+    onStartRouteHandled: () -> Unit = {},
+    forecastRegionId: String? = null,
+    onForecastRegionHandled: () -> Unit = {}
 ) {
     val nav = rememberNavController()
     val tabs = listOf(Tab.Briefing, Tab.Forecast, Tab.Settings)
@@ -75,7 +77,13 @@ fun AppNav(
     ) { padding ->
         NavHost(navController = nav, startDestination = NavRoutes.BRIEFING) {
             composable(NavRoutes.BRIEFING) { BriefingScreen(padding) }
-            composable(NavRoutes.FORECAST) { ForecastScreen(padding) }
+            composable(NavRoutes.FORECAST) {
+                ForecastScreen(
+                    padding = padding,
+                    targetRegionId = forecastRegionId,
+                    onTargetRegionHandled = onForecastRegionHandled
+                )
+            }
             composable(NavRoutes.SETTINGS) { SettingsScreen(padding) }
         }
     }

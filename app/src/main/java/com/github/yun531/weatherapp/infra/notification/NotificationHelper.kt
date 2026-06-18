@@ -70,18 +70,6 @@ object NotificationHelper {
     private val CONTENT_INTENT_FLAGS =
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
-    fun ensureChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = context.getSystemService(NotificationManager::class.java)
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Weather 알림",
-                NotificationManager.IMPORTANCE_DEFAULT
-            )
-            nm.createNotificationChannel(channel)
-        }
-    }
-
     /**
      * Android 13(API 33)+ 에서는 POST_NOTIFICATIONS 런타임 권한이 거부될 수 있음.
      * - 권한이 없으면 notify 호출을 하지 않고 조용히 종료.
@@ -97,19 +85,42 @@ object NotificationHelper {
     /**
      * 특정 화면(Route)으로 이동하기 위한 PendingIntent를 생성.
      */
-    private fun contentIntent(context: Context, route: String, requestCode: Int): PendingIntent {
+    private fun contentIntent(context: Context, target: NotificationTarget, requestCode: Int): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(NavRoutes.EXTRA_START_ROUTE, route)
+            putExtra(NavRoutes.EXTRA_START_ROUTE, routeOf(target))
+            regionIdOf(target)?.let { putExtra(NavRoutes.EXTRA_FORECAST_REGION_ID, it) }
         }
         return PendingIntent.getActivity(context, requestCode, intent, CONTENT_INTENT_FLAGS)
+    }
+
+    private fun routeOf(target: NotificationTarget): String = when (target) {
+        is NotificationTarget.Briefing -> NavRoutes.BRIEFING
+        is NotificationTarget.Forecast -> NavRoutes.FORECAST
+    }
+
+    private fun regionIdOf(target: NotificationTarget): String? = when (target) {
+        is NotificationTarget.Briefing -> null
+        is NotificationTarget.Forecast -> target.regionId
+    }
+
+    fun ensureChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = context.getSystemService(NotificationManager::class.java)
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Weather 알림",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            nm.createNotificationChannel(channel)
+        }
     }
 
     /**
      * 디버그용: events가 비어도 파이프라인(FCM 수신 → Worker 실행 → 알림 생성) 확인을 위해
      * 알림 1개를 강제로 띄움.
      */
-    fun showSimple(context: Context, title: String, text: String, route: String) {
+    fun showSimple(context: Context, title: String, text: String, target: NotificationTarget) {
         ensureChannel(context)
 
         val nm = NotificationManagerCompat.from(context)
@@ -128,14 +139,14 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setContentIntent(contentIntent(context, route, SIMPLE_NOTIFICATION_ID))
+            .setContentIntent(contentIntent(context, target, SIMPLE_NOTIFICATION_ID))
             .setAutoCancel(true)
             .build()
 
         nm.notify(SIMPLE_NOTIFICATION_ID, n)
     }
 
-    fun showAlertEvents(context: Context, title: String, events: List<AlertEventDto>, route: String) {
+    fun showAlertEvents(context: Context, title: String, events: List<AlertEventDto>, target: NotificationTarget) {
         if (events.isEmpty()) return
         ensureChannel(context)
 
@@ -191,7 +202,7 @@ object NotificationHelper {
             .setContentTitle(title)
             .setContentText(lines.first())
             .setStyle(style)
-            .setContentIntent(contentIntent(context, route, notificationId))
+            .setContentIntent(contentIntent(context, target, notificationId))
             .setAutoCancel(true)
             .build()
 
@@ -208,7 +219,7 @@ object NotificationHelper {
      * - 제목에는 기준일을 작은 글씨 "(M/d)" 로 덧붙여 본문의 '오늘'을 고정.
      * - BigTextStyle 로 줄 수 제한 없이 표시.
      */
-    fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>, route: String) {
+    fun showRegionBriefings(context: Context, title: String, briefings: List<RegionBriefing>, target: NotificationTarget) {
         if (briefings.isEmpty()) return
         ensureChannel(context)
 
@@ -236,7 +247,7 @@ object NotificationHelper {
             .setContentTitle(styledTitle(title, baseDate))
             .setContentText(collapsed)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setContentIntent(contentIntent(context, route, notificationId))
+            .setContentIntent(contentIntent(context, target, notificationId))
             .setAutoCancel(true)
             .build()
 

@@ -71,7 +71,12 @@ private val TempHigh = Color(0xFFFF9F45)
 private val HeroGradient = listOf(Color(0xFF3D7CEC), Color(0xFF5C9BF0), Color(0xFF83B6F4))
 
 @Composable
-fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) {
+fun ForecastScreen(
+    padding: PaddingValues,
+    targetRegionId: String? = null,
+    onTargetRegionHandled: () -> Unit = {},
+    vm: ForecastViewModel = viewModel()
+) {
     val settings by ServiceLocator.settingsRepo.settingsFlow.collectAsState(initial = null)
     val regions = remember(settings) {
         settings?.let { ServiceLocator.settingsRepo.selectedRegions(it) } ?: emptyList()
@@ -84,6 +89,13 @@ fun ForecastScreen(padding: PaddingValues, vm: ForecastViewModel = viewModel()) 
         }
 
         val pagerState = rememberPagerState(pageCount = { regions.size })
+
+        LaunchedEffect(targetRegionId, regions) {
+            if (targetRegionId == null) return@LaunchedEffect
+            val index = regions.indexOf(targetRegionId)
+            if (index >= 0) pagerState.scrollToPage(index)
+            onTargetRegionHandled()
+        }
 
         LaunchedEffect(pagerState.currentPage, regions) {
             regions.getOrNull(pagerState.currentPage)?.let { vm.loadIfNeeded(it) }

@@ -20,17 +20,20 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val startRoute = mutableStateOf<String?>(null)
+    private val forecastRegionId = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermissionIfNeeded()
-        startRoute.value = routeFromIntent(intent)
+        applyIntent(intent)
 
         setContent {
             WeatherAppTheme {
                 AppNav(
                     startRoute = startRoute.value,
-                    onStartRouteHandled = { startRoute.value = null }
+                    onStartRouteHandled = { startRoute.value = null },
+                    forecastRegionId = forecastRegionId.value,
+                    onForecastRegionHandled = { forecastRegionId.value = null }
                 )
             }
         }
@@ -39,11 +42,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        startRoute.value = routeFromIntent(intent)
+        applyIntent(intent)
     }
 
-    private fun routeFromIntent(intent: Intent?): String? =
-        intent?.getStringExtra(NavRoutes.EXTRA_START_ROUTE)
+    private fun applyIntent(intent: Intent?) {
+        startRoute.value = intent?.getStringExtra(NavRoutes.EXTRA_START_ROUTE)
+        forecastRegionId.value = intent?.getStringExtra(NavRoutes.EXTRA_FORECAST_REGION_ID)
+    }
 
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT < 33) return
