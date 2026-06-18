@@ -253,15 +253,18 @@ private fun airSummary(air: AirBriefing?): String {
 
 // ==================== Rain detail ====================
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RainDetail(rain: RainBriefing, today: LocalDate) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (rain.intervals.isNotEmpty()) {
-            Row(
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                maxItemsInEachRow = 2,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                rain.intervals.take(3).forEach { iv ->
+                rain.intervals.forEach { iv ->
                     AssistChip(
                         onClick = {},
                         label = { Text(formatInterval(iv.start, iv.end, today)) },
