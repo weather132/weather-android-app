@@ -400,7 +400,7 @@ private fun WeeklyRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, modifier = Modifier.width(28.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+        Text(label, modifier = Modifier.width(36.dp), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
 
         Spacer(Modifier.width(6.dp))
 

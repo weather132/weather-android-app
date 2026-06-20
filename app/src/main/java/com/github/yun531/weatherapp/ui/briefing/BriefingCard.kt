@@ -98,9 +98,9 @@ private enum class CardEmphasis { WARNING, AIR_BAD, RAIN, CLEAR }
 
 private fun emphasisOf(b: RegionBriefing): CardEmphasis = when {
     b.warnings.isNotEmpty() -> CardEmphasis.WARNING
+    b.rain?.hasAnyRain() == true -> CardEmphasis.RAIN
     b.air?.representativeGrade()
         ?.let { it == AirBriefing.Grade.BAD || it == AirBriefing.Grade.VERY_BAD } == true -> CardEmphasis.AIR_BAD
-    b.rain?.hasAnyRain() == true -> CardEmphasis.RAIN
     else -> CardEmphasis.CLEAR
 }
 
