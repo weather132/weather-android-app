@@ -71,7 +71,7 @@ fun BriefingCard(
                     expanded = expanded
                 )
                 Spacer(Modifier.height(10.dp))
-                CompactRow(briefing)
+                CompactRow(briefing, today)
 
                 AnimatedVisibility(visible = expanded) {
                     Column {
@@ -181,14 +181,14 @@ private fun StatusBadge(text: String, emphasis: CardEmphasis) {
 // ==================== Compact row ====================
 
 @Composable
-private fun CompactRow(b: RegionBriefing) {
+private fun CompactRow(b: RegionBriefing, today: LocalDate) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         CompactCell(
             label = "비",
-            value = rainSummary(b.rain),
+            value = rainSummary(b.rain, today),
             valueColor = if (b.rain?.hasAnyRain() == true) RainAccent else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f)
         )
@@ -233,12 +233,11 @@ private fun airValueColor(air: AirBriefing?): Color {
     return gradeColor(grade)
 }
 
-private fun rainSummary(rain: RainBriefing?): String {
+private fun rainSummary(rain: RainBriefing?, today: LocalDate): String {
     if (rain == null || !rain.hasAnyRain()) return "없음"
     val firstInterval = rain.intervals.firstOrNull()
-    if (firstInterval != null) return "${firstInterval.start.hour}시 시작"
-    val rainyDays = rain.days.count { it.rainAm || it.rainPm }
-    return "7일 중 ${rainyDays}일"
+    if (firstInterval != null) return intervalStartLabel(firstInterval.start, today)
+    return sevenDayRainSummary(rain.days)
 }
 
 private fun warningSummary(warnings: List<WarningBriefing>): String =
@@ -249,6 +248,28 @@ private fun airSummary(air: AirBriefing?): String {
     if (air == null || !air.hasAnyMeasurement()) return "정보 없음"
     val grade = air.representativeGrade() ?: return "정보 없음"
     return gradeLabel(grade)
+}
+
+private fun intervalStartLabel(start: LocalDateTime, today: LocalDate): String {
+    if (start.toLocalDate() == today) return "${start.hour}시 시작"
+    return "내일 ${start.hour}시 시작"
+}
+
+private fun sevenDayRainSummary(days: List<RainBriefing.DayRain>): String {
+    val rainyDays = days.count { it.rainAm || it.rainPm }
+    val nearestLabel = relativeDayLabel(firstRainyDayIndex(days))
+    if (rainyDays == 1) return "$nearestLabel 비"
+    return "$nearestLabel 등 ${rainyDays}일"
+}
+
+private fun firstRainyDayIndex(days: List<RainBriefing.DayRain>): Int =
+    days.indexOfFirst { it.rainAm || it.rainPm }
+
+private fun relativeDayLabel(daysAhead: Int): String = when (daysAhead) {
+    0 -> "오늘"
+    1 -> "내일"
+    2 -> "모레"
+    else -> "D+$daysAhead"
 }
 
 // ==================== Rain detail ====================
@@ -288,7 +309,6 @@ private fun RainDetail(rain: RainBriefing, today: LocalDate) {
 
 @Composable
 private fun SevenDayRainBars(days: List<RainBriefing.DayRain>) {
-    val labels = listOf("오늘", "내일", "모레", "D+3", "D+4", "D+5", "D+6")
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -298,7 +318,7 @@ private fun SevenDayRainBars(days: List<RainBriefing.DayRain>) {
                 modifier = Modifier.weight(1f),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(labels.getOrElse(idx) { "D+$idx" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(relativeDayLabel(idx), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(4.dp))
                 RainBar(active = day.rainAm)
                 Spacer(Modifier.height(2.dp))
