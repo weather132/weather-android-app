@@ -8,8 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -28,19 +26,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.github.yun531.weatherapp.data.region.RegionCatalog
-import com.github.yun531.weatherapp.domain.AirQualityGrade
 import com.github.yun531.weatherapp.domain.briefing.AirBriefing
-import com.github.yun531.weatherapp.domain.briefing.RainBriefing
 import com.github.yun531.weatherapp.domain.briefing.RegionBriefing
 import com.github.yun531.weatherapp.domain.briefing.WarningBriefing
 import java.time.LocalDate
-import java.time.LocalDateTime
 
 // ==================== 의미 색 팔레트 ====================
 // 영역별 의미 색. 카드 좌측 막대 / 압축 행 값 강조 등에 사용.
 // 미세먼지 값/막대는 4단계 gradeColor 를 따로 사용한다.
 
-private val RainAccent = Color(0xFF1976D2)       // 파랑 - 비
+internal val RainAccent = Color(0xFF1976D2)      // 파랑 - 비
 private val WarningAccent = Color(0xFFC62828)    // 빨강 - 기상특보
 private val AirAccent = Color(0xFFE65100)        // 진한 주황 - 미세먼지 emphasis 좌측 막대
 
@@ -225,223 +220,11 @@ private fun CompactCell(
     }
 }
 
-/** 미세먼지 압축 값 색: 막대그래프와 동일한 4단계 grade 색 */
-@Composable
-private fun airValueColor(air: AirBriefing?): Color {
-    val grade = air?.representativeGrade()?.toAirQualityGrade()
-        ?: return MaterialTheme.colorScheme.onSurface
-    return gradeColor(grade)
-}
-
-private fun rainSummary(rain: RainBriefing?, today: LocalDate): String {
-    if (rain == null || !rain.hasAnyRain()) return "없음"
-    val firstInterval = rain.intervals.firstOrNull()
-    if (firstInterval != null) return intervalStartLabel(firstInterval.start, today)
-    return sevenDayRainSummary(rain.days)
-}
+// ==================== 특보 ====================
 
 private fun warningSummary(warnings: List<WarningBriefing>): String =
     if (warnings.isEmpty()) "없음"
     else warnings.joinToString(", ") { kindLabel(it.kind) }
-
-private fun airSummary(air: AirBriefing?): String {
-    if (air == null || !air.hasAnyMeasurement()) return "정보 없음"
-    val grade = air.representativeGrade() ?: return "정보 없음"
-    return gradeLabel(grade)
-}
-
-private fun intervalStartLabel(start: LocalDateTime, today: LocalDate): String {
-    if (start.toLocalDate() == today) return "${start.hour}시 시작"
-    return "내일 ${start.hour}시 시작"
-}
-
-private fun sevenDayRainSummary(days: List<RainBriefing.DayRain>): String {
-    val rainyDays = days.count { it.rainAm || it.rainPm }
-    val nearestLabel = relativeDayLabel(firstRainyDayIndex(days))
-    if (rainyDays == 1) return "$nearestLabel 비"
-    return "$nearestLabel 등 ${rainyDays}일"
-}
-
-private fun firstRainyDayIndex(days: List<RainBriefing.DayRain>): Int =
-    days.indexOfFirst { it.rainAm || it.rainPm }
-
-private fun relativeDayLabel(daysAhead: Int): String = when (daysAhead) {
-    0 -> "오늘"
-    1 -> "내일"
-    2 -> "모레"
-    else -> "D+$daysAhead"
-}
-
-// ==================== Rain detail ====================
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun RainDetail(rain: RainBriefing, today: LocalDate) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (rain.intervals.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                maxItemsInEachRow = 2,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                rain.intervals.forEach { iv ->
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(formatInterval(iv.start, iv.end, today)) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    )
-                }
-            }
-        }
-        // 7일 막대는 days 가 있으면 무조건 표시 (비 없어도 회색 막대)
-        Text(
-            "7일 오전/오후 비 여부",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        SevenDayRainBars(rain.days)
-    }
-}
-
-@Composable
-private fun SevenDayRainBars(days: List<RainBriefing.DayRain>) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        days.take(7).forEachIndexed { idx, day ->
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(relativeDayLabel(idx), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                RainBar(active = day.rainAm)
-                Spacer(Modifier.height(2.dp))
-                RainBar(active = day.rainPm)
-            }
-        }
-    }
-}
-
-@Composable
-private fun RainBar(active: Boolean) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(
-                if (active) RainAccent
-                else MaterialTheme.colorScheme.surfaceVariant
-            )
-    )
-}
-
-// ==================== Air detail ====================
-
-@Composable
-private fun AirDetail(air: AirBriefing) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        PmColumn(
-            label = "미세먼지",
-            value = air.pm10,
-            gradeStr = air.pm10Grade,
-            withValue = air.pm10NeedsValue(),
-            modifier = Modifier.weight(1f)
-        )
-        PmColumn(
-            label = "초미세먼지",
-            value = air.pm25,
-            gradeStr = air.pm25Grade,
-            withValue = air.pm25NeedsValue(),
-            modifier = Modifier.weight(1f)
-        )
-    }
-}
-
-@Composable
-private fun PmColumn(
-    label: String,
-    value: Int?,
-    gradeStr: String?,
-    withValue: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val gradeEnum = gradeStr?.toAirQualityGrade()
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (gradeEnum == null || value == null) {
-            Text("정보 없음", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } else {
-            Text(
-                text = if (withValue) "${gradeEnum.label} ${value}㎍/㎥" else gradeEnum.label,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = gradeColor(gradeEnum)
-            )
-            AirQualityMiniBar(gradeEnum, fraction = fillFractionOf(label, value))
-        }
-    }
-}
-
-@Composable
-private fun AirQualityMiniBar(grade: AirQualityGrade, fraction: Float) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(6.dp)
-            .clip(RoundedCornerShape(3.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(fraction)
-                .height(6.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(gradeColor(grade))
-        )
-    }
-}
-
-private fun fillFractionOf(label: String, value: Int): Float {
-    val max = if (label == "미세먼지") 150f else 75f
-    return (value / max).coerceIn(0.05f, 1f)
-}
-
-// ==================== Formatting ====================
-
-private fun formatInterval(start: LocalDateTime, end: LocalDateTime, today: LocalDate): String =
-    "${formatTime(start, today)}~${formatTime(end, today)}"
-
-private fun formatTime(dt: LocalDateTime, today: LocalDate): String {
-    val day = when (dt.toLocalDate()) {
-        today -> "오늘"
-        today.plusDays(1) -> "내일"
-        today.plusDays(2) -> "모레"
-        else -> "${dt.monthValue}/${dt.dayOfMonth}"
-    }
-    return "$day ${dt.hour}시"
-}
-
-private fun gradeLabel(grade: String): String = when (grade) {
-    AirBriefing.Grade.GOOD -> "좋음"
-    AirBriefing.Grade.MODERATE -> "보통"
-    AirBriefing.Grade.BAD -> "나쁨"
-    AirBriefing.Grade.VERY_BAD -> "매우나쁨"
-    else -> grade
-}
 
 private fun kindLabel(kind: String): String = when (kind) {
     "RAIN" -> "호우"
