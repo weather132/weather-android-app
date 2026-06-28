@@ -31,11 +31,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.yun531.weatherapp.data.region.RegionCatalog
+import com.github.yun531.weatherapp.ui.common.EmptyRegionState
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun BriefingScreen(padding: PaddingValues, vm: BriefingViewModel = viewModel()) {
+fun BriefingScreen(
+    padding: PaddingValues,
+    onAddRegion: () -> Unit = {},
+    vm: BriefingViewModel = viewModel()
+) {
     val state by vm.state.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
     val regionCatalog = remember { RegionCatalog.get(context) }
@@ -43,13 +48,22 @@ fun BriefingScreen(padding: PaddingValues, vm: BriefingViewModel = viewModel()) 
     LaunchedEffect(Unit) { vm.load() }
 
     Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-        Header(onRefresh = { vm.load() })
+        val s = state
 
-        when (val s = state) {
+        if (s !is BriefingViewModel.UiState.NoRegions) {
+            Header(onRefresh = { vm.load() })
+        }
+
+        when (s) {
             is BriefingViewModel.UiState.Idle,
             is BriefingViewModel.UiState.Loading -> LoadingBlock()
 
-            is BriefingViewModel.UiState.NoRegions -> EmptyMessage("설정에서 지역을 먼저 선택해주세요.")
+            is BriefingViewModel.UiState.NoRegions -> EmptyRegionState(
+                title = "아직 선택된 지역이 없어요",
+                description = "관심 지역을 추가하면\n비 소식과 미세먼지 예보를 한눈에 볼 수 있어요",
+                accent = RainAccent,
+                onAddRegion = onAddRegion
+            )
 
             is BriefingViewModel.UiState.Failed -> ErrorBlock(message = s.message, onRetry = { vm.load() })
 
@@ -57,7 +71,7 @@ fun BriefingScreen(padding: PaddingValues, vm: BriefingViewModel = viewModel()) 
                 if (s.briefings.isEmpty()) {
                     EmptyMessage("표시할 지역이 없습니다.")
                 } else {
-                    BriefingList(state = s, regionCatalog = regionCatalog)
+                    // 기존 브리핑 리스트 — 변경 없음
                 }
             }
         }

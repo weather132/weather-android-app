@@ -59,6 +59,7 @@ import com.github.yun531.weatherapp.data.remote.dto.DailyForecastDto
 import com.github.yun531.weatherapp.data.remote.dto.HourlyForecastDto
 import com.github.yun531.weatherapp.ui.common.CalendarIcon
 import com.github.yun531.weatherapp.ui.common.ClockIcon
+import com.github.yun531.weatherapp.ui.common.EmptyRegionState
 import com.github.yun531.weatherapp.ui.common.RainDropIcon
 import com.github.yun531.weatherapp.ui.common.SectionHeader
 
@@ -75,6 +76,7 @@ fun ForecastScreen(
     padding: PaddingValues,
     targetRegionId: String? = null,
     onTargetRegionHandled: () -> Unit = {},
+    onAddRegion: () -> Unit = {},
     vm: ForecastViewModel = viewModel()
 ) {
     val settings by ServiceLocator.settingsRepo.settingsFlow.collectAsState(initial = null)
@@ -84,7 +86,12 @@ fun ForecastScreen(
 
     Box(Modifier.padding(padding).fillMaxSize()) {
         if (regions.isEmpty()) {
-            Text("설정에서 지역을 선택해주세요.", modifier = Modifier.padding(16.dp))
+            EmptyRegionState(
+                title = "아직 선택된 지역이 없어요",
+                description = "관심 지역을 추가하면\n시간별·주간 강수 예보를 확인할 수 있어요",
+                accent = RainEmphasis,
+                onAddRegion = onAddRegion
+            )
             return@Box
         }
 

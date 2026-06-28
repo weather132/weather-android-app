@@ -76,12 +76,18 @@ fun AppNav(
         }
     ) { padding ->
         NavHost(navController = nav, startDestination = NavRoutes.BRIEFING) {
-            composable(NavRoutes.BRIEFING) { BriefingScreen(padding) }
+            composable(NavRoutes.BRIEFING) {
+                BriefingScreen(
+                    padding = padding,
+                    onAddRegion = { nav.navigateToTab(NavRoutes.SETTINGS) }
+                )
+            }
             composable(NavRoutes.FORECAST) {
                 ForecastScreen(
                     padding = padding,
                     targetRegionId = forecastRegionId,
-                    onTargetRegionHandled = onForecastRegionHandled
+                    onTargetRegionHandled = onForecastRegionHandled,
+                    onAddRegion = { nav.navigateToTab(NavRoutes.SETTINGS) }
                 )
             }
             composable(NavRoutes.SETTINGS) { SettingsScreen(padding) }
