@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -64,6 +65,8 @@ import com.github.yun531.weatherapp.ui.common.WarningIcon
 private const val CATEGORY_TEMPERATURE = "기온"
 private const val CATEGORY_PRECIPITATION = "강수"
 private const val CATEGORY_WIND_OCEAN = "바람·해양"
+
+private const val DISABLED_ALPHA = 0.38f
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -98,17 +101,28 @@ fun SettingsScreen(padding: PaddingValues, vm: SettingsViewModel = viewModel()) 
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val hasRegion = chosen.isNotEmpty()
             val anyAlertEnabled = s.hourlyEnabled || s.dailyEnabled
 
             SectionHeader(BellIcon, "알림")
-            HourlyAlertCard(hourlyEnabled = s.hourlyEnabled, vm = vm)
+            AnimatedVisibility(visible = !hasRegion) {
+                Text(
+                    "관심 지역을 추가하면 알림을 설정할 수 있어요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+            HourlyAlertCard(hourlyEnabled = s.hourlyEnabled, enabled = hasRegion, vm = vm)
             DailyAlertCard(
                 dailyEnabled = s.dailyEnabled,
                 dailyHour = s.dailyHour,
+                enabled = hasRegion,
                 vm = vm
             )
             AlertKindsCard(
                 anyAlertEnabled = anyAlertEnabled,
+                hasRegion = hasRegion,
                 enabledKinds = s.enabledKinds,
                 warningKinds = s.warningKinds,
                 vm = vm
@@ -165,13 +179,14 @@ private fun RegionSection(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HourlyAlertCard(hourlyEnabled: Boolean, vm: SettingsViewModel) {
+private fun HourlyAlertCard(hourlyEnabled: Boolean, enabled: Boolean, vm: SettingsViewModel) {
     SettingsCard {
         AlertToggleRow(
             icon = BellIcon,
             title = "정각 알림",
             subtitle = "매 정각에 조건에 맞는 알림을 생성합니다",
             checked = hourlyEnabled,
+            enabled = enabled,
             onCheckedChange = { vm.setHourlyEnabled(it) }
         )
     }
@@ -181,10 +196,12 @@ private fun HourlyAlertCard(hourlyEnabled: Boolean, vm: SettingsViewModel) {
 @Composable
 private fun AlertKindsCard(
     anyAlertEnabled: Boolean,
+    hasRegion: Boolean,
     enabledKinds: Set<AlertKind>,
     warningKinds: Set<WarningKind>,
     vm: SettingsViewModel
 ) {
+    val kindsSelectable = hasRegion && anyAlertEnabled
     SettingsCard {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -205,22 +222,22 @@ private fun AlertKindsCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AlertKindChip(CloudIcon, "일기예보", enabledKinds.contains(AlertKind.RAIN_ONSET), anyAlertEnabled) {
+                AlertKindChip(CloudIcon, "일기예보", enabledKinds.contains(AlertKind.RAIN_ONSET), kindsSelectable) {
                     vm.toggleKind(AlertKind.RAIN_ONSET)
                 }
-                AlertKindChip(WarningIcon, "기상특보", enabledKinds.contains(AlertKind.WARNING_ISSUED), anyAlertEnabled) {
+                AlertKindChip(WarningIcon, "기상특보", enabledKinds.contains(AlertKind.WARNING_ISSUED), kindsSelectable) {
                     vm.toggleKind(AlertKind.WARNING_ISSUED)
                 }
-                AlertKindChip(AirIcon, "미세먼지", enabledKinds.contains(AlertKind.AIR_POLLUTION), anyAlertEnabled) {
+                AlertKindChip(AirIcon, "미세먼지", enabledKinds.contains(AlertKind.AIR_POLLUTION), kindsSelectable) {
                     vm.toggleKind(AlertKind.AIR_POLLUTION)
                 }
             }
 
-            AnimatedVisibility(visible = anyAlertEnabled && enabledKinds.contains(AlertKind.WARNING_ISSUED)) {
+            AnimatedVisibility(visible = kindsSelectable && enabledKinds.contains(AlertKind.WARNING_ISSUED)) {
                 WarningKindPicker(warningKinds = warningKinds, vm = vm)
             }
 
-            if (!anyAlertEnabled) {
+            if (hasRegion && !anyAlertEnabled) {
                 Text(
                     "정각 알림 또는 일일 요약 알림을 켜면 항목을 선택할 수 있습니다",
                     style = MaterialTheme.typography.bodySmall,
@@ -297,7 +314,7 @@ private fun WarningKindPicker(warningKinds: Set<WarningKind>, vm: SettingsViewMo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DailyAlertCard(dailyEnabled: Boolean, dailyHour: Int, vm: SettingsViewModel) {
+private fun DailyAlertCard(dailyEnabled: Boolean, dailyHour: Int, enabled: Boolean, vm: SettingsViewModel) {
     SettingsCard {
         Column {
             AlertToggleRow(
@@ -305,6 +322,7 @@ private fun DailyAlertCard(dailyEnabled: Boolean, dailyHour: Int, vm: SettingsVi
                 title = "일일 요약 알림",
                 subtitle = "알람 시각 기준 24시간 예보 + 7일 예보를 요약해 제공합니다",
                 checked = dailyEnabled,
+                enabled = enabled,
                 onCheckedChange = { vm.setDailyEnabled(it) }
             )
             HorizontalDivider()
@@ -319,7 +337,7 @@ private fun DailyAlertCard(dailyEnabled: Boolean, dailyHour: Int, vm: SettingsVi
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        DailyHourField(hour = dailyHour, onHourChange = { vm.setDailyHour(it) })
+                        DailyHourField(hour = dailyHour, enabled = enabled, onHourChange = { vm.setDailyHour(it) })
                         Text(
                             "선택한 시각에 일일 요약 알림이 제공됩니다.",
                             style = MaterialTheme.typography.bodySmall,
@@ -345,6 +363,7 @@ private fun AlertToggleRow(
     title: String,
     subtitle: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -352,12 +371,20 @@ private fun AlertToggleRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        IconBadge(icon)
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .alpha(if (enabled) 1f else DISABLED_ALPHA),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IconBadge(icon)
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
     }
 }
 
@@ -383,16 +410,17 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun DailyHourField(hour: Int, onHourChange: (Int) -> Unit) {
+private fun DailyHourField(hour: Int, enabled: Boolean = true, onHourChange: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(13.dp)
     Box {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .alpha(if (enabled) 1f else DISABLED_ALPHA)
                 .clip(shape)
                 .border(1.3.dp, MaterialTheme.colorScheme.outlineVariant, shape)
-                .clickable { expanded = true }
+                .clickable(enabled = enabled) { expanded = true }
                 .padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
