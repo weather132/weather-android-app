@@ -71,7 +71,7 @@ fun BriefingScreen(
                 if (s.briefings.isEmpty()) {
                     EmptyMessage("표시할 지역이 없습니다.")
                 } else {
-                    // 기존 브리핑 리스트 — 변경 없음
+                    BriefingList(state = s, regionCatalog = regionCatalog)
                 }
             }
         }
